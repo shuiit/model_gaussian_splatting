@@ -106,8 +106,8 @@ def load_hull(body_wing,path):
 def intersection_per_cam(frames_per_cam, cam_num, ptcloud_volume, tol=1.0):
     """Efficiently finds intersecting 3D points projected onto a camera image plane."""
     
-    ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)
-    pt2dv = frames_per_cam[cam_num].project_on_image(ptsv)
+    # ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)
+    pt2dv = frames_per_cam[cam_num].project_with_proj_mat(ptcloud_volume)[:,0:2]
     pt2dv = np.fliplr(pt2dv)  # Flip x-y coordinates if needed
 
     # Build KDTree for fast pixel search

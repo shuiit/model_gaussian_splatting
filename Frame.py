@@ -23,9 +23,9 @@ class Frame(Camera):
 
         super().__init__()
         if frames_dict:
-            self.image_id = list(frames_dict[frame][0].keys())[cam_num]
-            self.load_from_dict(frames_dict,frame,self.image_id,cam_num)  
-            self.image_name = frames_dict[frame][0][list(frames_dict[frame][0].keys())[cam_num]]['name'].split('.')[0]
+            self.image_id = list(frames_dict[frame][0].keys())[frame_num]
+            self.load_from_dict(frames_dict,frame,self.image_id,frame_num)  
+            self.image_name = frames_dict[frame][0][list(frames_dict[frame][0].keys())[frame_num]]['name'].split('.')[0]
             
             self.frame = frame
         else: 
