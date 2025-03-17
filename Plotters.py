@@ -7,7 +7,6 @@ import plotly.io as pio
 import matplotlib.cm
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 from plotly.subplots import make_subplots
 
 import matplotlib.pyplot as plt

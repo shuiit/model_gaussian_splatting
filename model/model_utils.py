@@ -41,7 +41,7 @@ def build_skeleton(root,body,right_wing,left_wing,skin_translation = torch.tenso
 
 
     skin = torch.vstack([body.ptcloud_skin,right_wing.ptcloud_skin,left_wing.ptcloud_skin])
-    weights = torch.vstack([body.weights,right_wing.weights,left_wing.weights])
+    weights = torch.vstack([body.weights,right_wing.weights,left_wing.weights]).cuda()
     bones = body.bones
     return joint_list,skin,weights,bones
 
