@@ -26,7 +26,6 @@ from scene.gaussian_model import BasicPointCloud
 import sys
 sys.path.insert(0, 'D:/Documents/gaussian_splat/model/fly_model')
 
-import model.Utils as Utils
 
 # from model.fly_model.InitilizeModel import (
 #     initilize_ptcloud,
@@ -86,7 +85,7 @@ def getNerfppNorm(cam_info):
 
     return {"translate": translate, "radius": radius}
 
-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+def readColmapCameras(cam_extrinsics, cam_intrinsics, depths_params, images_folder, depths_folder, test_cam_names_list):
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write('\r')
@@ -117,13 +116,24 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
         else:
             assert False, "Colmap camera model not handled: only undistorted datasets (PINHOLE or SIMPLE_PINHOLE cameras) supported!"
 
-        image_path = os.path.join(images_folder, os.path.basename(extr.name))
-        image_name = os.path.basename(image_path).split(".")[0]
+        n_remove = len(extr.name.split('.')[-1]) + 1
+        depth_params = None
+        if depths_params is not None:
+            try:
+                depth_params = depths_params[extr.name[:-n_remove]]
+            except:
+                print("\n", key, "not found in depths_params")
+
+        image_path = os.path.join(images_folder, extr.name)
+        image_name = extr.name
+        depth_path = os.path.join(depths_folder, f"{extr.name[:-n_remove]}.png") if depths_folder != "" else ""
         image = Image.open(image_path)
 
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, Cx= Cx, Cy = Cy, image=image,
-                              image_path=image_path, image_name=image_name, width=width, height=height)
+                              image_path=image_path, image_name=image_name,
+                              width=width, height=height)
         cam_infos.append(cam_info)
+
     sys.stdout.write('\n')
     return cam_infos
 
@@ -209,15 +219,56 @@ def readColmapSceneInfo(path, images, eval, llffhold=8,read_from_dict = False):
                            ply_path=ply_path)
     return scene_info
 
-def readDictSceneInfo(path, images, eval, data_dict, llffhold=8):
+def readDictSceneInfo(path, images,depths, eval, data_dict, llffhold=8):
 
     cam_extrinsics = read_extrinsics_dict(data_dict[0])
     cam_intrinsics = read_intrinsics_dict(data_dict[1])
     
+    depth_params_file = os.path.join(path, "sparse/0", "depth_params.json")
+    ## if depth_params_file isnt there AND depths file is here -> throw error
+    depths_params = None
+    if depths != "":
+        try:
+            with open(depth_params_file, "r") as f:
+                depths_params = json.load(f)
+            all_scales = np.array([depths_params[key]["scale"] for key in depths_params])
+            if (all_scales > 0).sum():
+                med_scale = np.median(all_scales[all_scales > 0])
+            else:
+                med_scale = 0
+            for key in depths_params:
+                depths_params[key]["med_scale"] = med_scale
+
+        except FileNotFoundError:
+            print(f"Error: depth_params.json file not found at path '{depth_params_file}'.")
+            sys.exit(1)
+        except Exception as e:
+            print(f"An unexpected error occurred when trying to open depth_params.json file: {e}")
+            sys.exit(1)
+
+    if eval:
+        if "360" in path:
+            llffhold = 8
+        if llffhold:
+            print("------------LLFF HOLD-------------")
+            cam_names = [cam_extrinsics[cam_id].name for cam_id in cam_extrinsics]
+            cam_names = sorted(cam_names)
+            test_cam_names_list = [name for idx, name in enumerate(cam_names) if idx % llffhold == 0]
+        else:
+            with open(os.path.join(path, "sparse/0", "test.txt"), 'r') as file:
+                test_cam_names_list = [line.strip() for line in file]
+    else:
+        test_cam_names_list = []
+
+    
     reading_dir = "images" if images == None else images
-    images_folder=os.path.join(path, reading_dir)
-    cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics, images_folder=os.path.join(path, reading_dir))
+    
+    cam_infos_unsorted = readColmapCameras(
+        cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics, depths_params=depths_params,
+        images_folder=os.path.join(path, reading_dir), 
+        depths_folder=os.path.join(path, depths) if depths != "" else "", test_cam_names_list=test_cam_names_list)
     cam_infos = sorted(cam_infos_unsorted.copy(), key = lambda x : x.image_name)
+
     if eval:
         train_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % llffhold != 0]
         test_cam_infos = [c for idx, c in enumerate(cam_infos) if idx % llffhold == 0]
@@ -226,28 +277,36 @@ def readDictSceneInfo(path, images, eval, data_dict, llffhold=8):
         test_cam_infos = []
 
     nerf_normalization = getNerfppNorm(train_cam_infos)
-    xyz, rgb = read_points3D_dict(data_dict[2])
+    # xyz, rgb = read_points3D_dict(data_dict[2])
     ply_path = os.path.join(path, "dict/points3D.ply")
-    dict_path = os.path.join(path, "dict/xyz_rgb.pkl")
+    # dict_path = os.path.join(path, "dict/xyz_rgb.pkl")
     
-    if os.path.exists(ply_path): 
-        os.remove(ply_path)
-        storePly(ply_path, xyz, rgb)
-    else:
-        storePly(ply_path, xyz, rgb)
-    try:
-        pcd = fetchPly(ply_path)
-    except:
-        pcd = None
+    # if os.path.exists(ply_path): 
+    #     os.remove(ply_path)
+    #     storePly(ply_path, xyz, rgb)
+    # else:
+    #     storePly(ply_path, xyz, rgb)
+    # try:
+    #     pcd = fetchPly(ply_path)
+    # except:
+    #     pcd = None
 
-    scene_info = SceneInfo(point_cloud=pcd,
+    # scene_info = SceneInfo(point_cloud=pcd,
+    #                        train_cameras=train_cam_infos,
+    #                        test_cameras=test_cam_infos,
+    #                        nerf_normalization=nerf_normalization,
+    #                        ply_path=ply_path,
+    #                        is_nerf_synthetic=False)
+    
+
+    scene_info = SceneInfo(point_cloud=[],
                            train_cameras=train_cam_infos,
-                           test_cameras=test_cam_infos,
-                           nerf_normalization=nerf_normalization,
-                           ply_path=ply_path)
+                        test_cameras=test_cam_infos,
+                        nerf_normalization=nerf_normalization,
+                        ply_path=ply_path,
+                        )
+
     return scene_info
-
-
 
 def readModelSceneInfo(path, images, eval, data_dict, llffhold=8):
 
@@ -387,5 +446,4 @@ sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo,
     "Blender" : readNerfSyntheticInfo,
     "dict": readDictSceneInfo,
-    "Model": readModelSceneInfo
 }

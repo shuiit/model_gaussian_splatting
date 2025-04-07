@@ -3,9 +3,10 @@ from model.Bone import Bone
 import torch
 
 class Joint:
-    def __init__(self, translation, rotation,  parent = None, end_joint_of_bone = True, rotation_order = 'zyx', scale = 1,color = 'green'):
+    def __init__(self, translation, rotation,  parent = None, end_joint_of_bone = True, rotation_order = 'zyx', scale = 1,color = 'green',name = None):
         self.child = []
         self.parent = parent
+        self.neme = name
         rotation = torch.tensor(rotation,device='cuda')
         self.local_angles = rotation
         self.local_translation = torch.tensor(translation,device='cuda')*scale
@@ -61,9 +62,9 @@ class Joint:
 
 
 
-    def set_local_rotation(self,angles):
+    def set_local_rotation(self,yaw,pitch,roll):
         # angles (z,y,x) (yaw, pitch, roll)
-        self.local_rotation = self.rotation_matrix(angles[0],angles[1],angles[2])
+        self.local_rotation = self.rotation_matrix(yaw,pitch,roll)
         self.local_transformation = self.transformation_matrix()
 
     
@@ -78,7 +79,7 @@ class Joint:
         if self.parent == None:
             return self.local_transformation
         self.global_transformation = self.parent.get_global_transformation(rest_bind = rest_bind)
-        self.global_transformation = torch.matmul(self.global_transformation,self.local_transformation)
+        self.global_transformation = torch.matmul(self.global_transformation.float(),self.local_transformation)
         if rest_bind == True:
             self.bind_transformation = self.global_transformation
         return self.global_transformation

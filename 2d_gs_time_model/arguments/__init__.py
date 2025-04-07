@@ -87,13 +87,20 @@ class OptimizationParams(ParamGroup):
         self.lambda_dist = 0.0
         self.lambda_normal = 0.05
         self.opacity_cull = 0.05
-
-        self.model_position_lr_init = 0.0001
-        self.model_rotation_lr = 0.5
-        self.model_rotation_lr_rwing = 0.5
-        self.model_rotation_lr_lwing = 0.5
-        self.model_lr_scale_skin = 0.005
-
+        
+        self.exposure_lr_init = 0.01
+        self.exposure_lr_final = 0.001
+        self.exposure_lr_delay_steps = 0
+        self.exposure_lr_delay_mult = 0.0
+        self.body_location_init = 0.0001
+        self.body_location_final = 0.0000000001
+        self.weights_lr = 0
+        self.model_rotation_lr = 0.1
+        self.model_rotation_lr_rwing = 0.1
+        self.model_rotation_lr_lwing = 0.1
+        self.scale_model = 0.005
+        self.random_background = False
+        self.optimizer_type = "default"
         
         self.densification_interval = 100
         self.opacity_reset_interval = 3000

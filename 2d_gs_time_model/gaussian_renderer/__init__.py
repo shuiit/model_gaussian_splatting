@@ -15,7 +15,8 @@ from diff_surfel_rasterization import GaussianRasterizationSettings, GaussianRas
 from scene.gaussian_model import GaussianModel
 from utils.sh_utils import eval_sh
 from utils.point_utils import depth_to_normal
-import model.Utils as Utils
+
+import utils.model_utils as model_utils
 
 def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, scaling_modifier = 1.0, override_color = None, model = True, initial_flag = True):
     """
@@ -58,30 +59,16 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
 
 
 
+    scale_mat = torch.diag(pc.scale_model)
+    means3D = (scale_mat @ pc.get_xyz.T).T
+    # right_wing_angles_center = torch.tensor([0.0,0.0,pc.right_wing_angles_center]).float().cuda()
+    # left_wing_angles_center = torch.tensor([0.0,0.0,pc.left_wing_angles_center]).float().cuda()
 
-
-    means3D = pc.scale_skin * pc.get_xyz
-
-    # rot_mat = pc.bones[0].rotation_matrix(pc.body_angles[0],pc.body_angles[1],pc.body_angles[2])
-
-    # means3D = torch.matmul(rot_mat,means3D.T).T
-
-    # if model == True:
-    means3D = Utils.transform_pose(means3D,pc.weights,pc.body_angles,
+    means3D = model_utils.transform_pose(means3D,pc.weights,pc.body_angles,
                                 pc.list_joints_pitch_update,pc.joint_list,pc.bones,pc.body_location,
-                                pc.right_wing_angles,pc.left_wing_angles)
-    
-    # if (model == True)| (initial_flag == True):
+                                pc.right_wing_angles,pc.left_wing_angles,pc.right_wing_angles_center,pc.left_wing_angles_center)
 
-    # pc.bones[0].set_local_rotation(pc.body_angles)
-    # [joint.set_local_rotation([pc.body_angles[0]*0,-pc.body_angles[1],pc.body_angles[2]*0]) for joint in pc.list_joints_pitch_update]
-    # [joint.update_rotation() for joint in pc.joint_list]
-
-    # points_homo = torch.column_stack([means3D,torch.ones(means3D.shape[0], device='cuda')])
-    # rotated_points = [joint.rotate_to_new_position(weight[:,None],points_homo) for weight,joint in zip(pc.weights.T,pc.bones)]
-    # means3D = sum(rotated_points)[:,0:3]
     means3D = torch.matmul(pc.ew_to_lab.T,means3D.T).T
-
 
     means2D = screenspace_points
     opacity = pc.get_opacity

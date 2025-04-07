@@ -3,9 +3,10 @@ from Bone import Bone
 import torch
 
 class Joint:
-    def __init__(self, translation, rotation,  parent = None, end_joint_of_bone = True, rotation_order = 'zyx', scale = 1,color = 'green'):
+    def __init__(self, translation, rotation,  parent = None, end_joint_of_bone = True, rotation_order = 'zyx', scale = 1,color = 'green',name = None):
         self.child = []
         self.parent = parent
+        self.neme = name
         rotation = torch.tensor(rotation,device='cuda')
         self.local_angles = rotation
         self.local_translation = torch.tensor(translation,device='cuda')*scale

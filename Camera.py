@@ -45,8 +45,8 @@ class Camera():
 
         self.fx = params[0]
         self.fy = params[1]
-        self.cx = params[2] +1
-        self.cy = params[3] +1
+        self.cx = params[2] 
+        self.cy = params[3] 
         self.K = np.array([[self.fx,0,self.cx],[0,self.fy,self.cy],[0,0,1]])
         width = camera[cam_id]['width']
         hight = camera[cam_id]['height']

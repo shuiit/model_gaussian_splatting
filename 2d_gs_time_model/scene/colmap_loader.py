@@ -258,8 +258,8 @@ def read_extrinsics_dict(data):
         images[base_image['id']] = Image(
                     id=base_image['id'], qvec=base_image['qvec'], tvec=base_image['tvec'],
                     camera_id=base_image['camera_id'], name=base_image['name'])
+                    
     return images
-
 
 # def read_extrinsics_dict(data):
 #     images = {}

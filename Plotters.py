@@ -57,8 +57,10 @@ def plot_hull(real_hull,size = 3):
 
     fig.show()
 
-def plot_projections(pt_cloud,frames_per_cam):
-    fig,ax = plt.subplots(2,2)
+def plot_projections(pt_cloud,frames_per_cam,color = 'red', ax = None):
+    if ax is None:
+        fig,ax = plt.subplots(2, 2) 
+          
     # pt_cloud =pt_cloud.copy()
     for idx in range(4):
         # vertices_homo = frames_per_cam[idx].homogenize_coordinate(pt_cloud) if homogenize == True else pt_cloud
@@ -66,8 +68,20 @@ def plot_projections(pt_cloud,frames_per_cam):
         points2d = frames_per_cam[idx].project_with_proj_mat(pt_cloud)
         ax[idx//2,np.mod(idx,2)].imshow(frames_per_cam[idx].im, cmap = 'gray')
         # ax[idx//2,np.mod(idx,2)].scatter(frames_per_cam[idx].pixels[:,1],frames_per_cam[idx].pixels[:,0] ,color = 'blue', alpha = 0.2, s= 3,cmap = 'gray')
-        ax[idx//2,np.mod(idx,2)].scatter(points2d[:,0] ,points2d[:,1] ,color = 'red', alpha = 1, s= 3,cmap = 'gray')
+        ax[idx//2,np.mod(idx,2)].scatter(points2d[:,0] ,points2d[:,1] ,color = color, alpha = 1, s= 3,cmap = 'gray')
+    return  ax
 
+def plot_images(frames_per_cam, ax = None):
+    if ax is None:
+        fig,ax = plt.subplots(2, 2) 
+          
+    # pt_cloud =pt_cloud.copy()
+    for idx in range(4):
+        # vertices_homo = frames_per_cam[idx].homogenize_coordinate(pt_cloud) if homogenize == True else pt_cloud
+        # vertices_homo = np.append(cm_point,1)[np.newaxis]
+        ax[idx//2,np.mod(idx,2)].imshow(frames_per_cam[idx].im, cmap = 'gray')
+        # ax[idx//2,np.mod(idx,2)].scatter(frames_per_cam[idx].pixels[:,1],frames_per_cam[idx].pixels[:,0] ,color = 'blue', alpha = 0.2, s= 3,cmap = 'gray')
+    return  ax
 
 
 
