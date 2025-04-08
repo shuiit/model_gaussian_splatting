@@ -29,8 +29,9 @@ def initilize_skeleton_and_skin(path_to_mesh,skeleton_scale = 1,skin_scale = 1):
 
 
     body = Skin(f'{path_to_mesh}/body_remesh.stl',scale = skin_scale,color = 'lime')
-    right_wing = Skin(f'{path_to_mesh}/right_wing_large.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
-    left_wing = Skin(f'{path_to_mesh}/left_wing_large.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
+    right_wing = Skin(f'{path_to_mesh}/right_wing_rec.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
+    left_wing = Skin(f'{path_to_mesh}/left_wing_rec.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
+    
 
     return root,body,right_wing,left_wing,list_joints_pitch_update
 
