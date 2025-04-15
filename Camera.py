@@ -191,8 +191,11 @@ class Camera():
         Returns:
             np array: Translated coordinates in NDC.
         """
-        # translate to ndc space
-        return ((pixel + 1)*s-1)*0.5
+
+        pixel[:,0] = ((pixel[:,0] + 1)*self.image_size[0]-1)*0.5
+        pixel[:,1] = ((pixel[:,1] + 1)*self.image_size[1]-1)*0.5        # translate to ndc space
+        
+        return pixel
     
 
     

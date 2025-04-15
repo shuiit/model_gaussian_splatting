@@ -7,7 +7,7 @@ import scipy.io
 import matplotlib.pyplot as plt
 from skimage.exposure import match_histograms
 class Frame(Camera):
-    def __init__(self,path,frame,frame_num, camera_path = None,frames_dict= None):
+    def __init__(self,path,frame,frame_num, camera_path = None,frames_dict= None, **kwargs):
         """
         Initialize a Frame object by loading the corresponding image and voxels and processing pixel data.
 
@@ -32,7 +32,7 @@ class Frame(Camera):
             self.image_id = frame_num
             self.image_name = frame
             self.load_from_text(camera_path,int(frame.split('CAM')[1])-1)
-            self.load_and_crop_image()
+            self.load_and_crop_image(**kwargs)
             
             self.frame = int(frame.split('CAM')[0].split('P')[1])
         self.im = Image.open(f'{self.path}/images/{self.image_name}.jpg').convert('L')
@@ -45,24 +45,27 @@ class Frame(Camera):
     def load_image(self):
    
         im = scipy.io.loadmat(f'{self.path}images/{self.image_name.split(".jpg")[0]}.mat')['im']
+        self.mask = im > 0 
         bg = np.array((scipy.io.loadmat(f'{self.path}images/bg.mat')['bg']//255).astype(np.uint16))
         white_bg = bg*0 + 255
         image = Image.fromarray(np.array((im * 255).astype(np.uint8)), mode="L")
         return image,white_bg,bg
     
-    def erode_and_add_bf(self,image,bg,kernel = np.ones((2, 2), np.uint8)):
+    def erode_and_add_bf(self,image,bg,kernel = np.ones((2, 2), np.uint8), use_mask = False):
         
         eroded_image = np.array(cv2.erode(np.array(image), kernel))
         image_with_bg = np.array(bg)
-        image_with_bg[eroded_image > 0] = eroded_image[eroded_image > 0]
+        mask = eroded_image > 0 if use_mask == False else self.mask
+        image_with_bg[mask] = eroded_image[mask]
         return Image.fromarray(image_with_bg),Image.fromarray(eroded_image)
     
     def calculate_bounding_box(self,cm,delta_xy):
         top_left = np.array([max(0,cm[0] - delta_xy), max(0,cm[1]-delta_xy)])
         bottom_right =  np.array([min(self.image_size[0],cm[0] + delta_xy), min(self.image_size[1],cm[1] + delta_xy)])
 
-        if (bottom_right != 0).any():
-            top_left = np.minimum(bottom_right - delta_xy*2,top_left) 
+        # if (bottom_right != 0).any():
+        #     top_left = np.minimum(bottom_right - delta_xy*2,top_left) 
+            
         return np.hstack((top_left,bottom_right))
         
         # bottom_right = np.array([min(self.image_size[0],bottom_right[0]),min(self.image_size[1],bottom_right[1])])
@@ -71,7 +74,7 @@ class Frame(Camera):
         # self.bounding_box = [max(0,cm[1] - delta_xy), max(0,cm[0]-delta_xy), max(0,cm[1] - delta_xy) + delta_xy*2 , max(0,cm[0]-delta_xy) + delta_xy*2] # [top left, bottom right]
 
 
-    def load_and_crop_image(self,delta_xy = 80):
+    def load_and_crop_image(self,delta_xy = 80, **kwargs):
         """
         Crop the image around the mean pixel coordinates.
 
@@ -79,7 +82,7 @@ class Frame(Camera):
             delta_xy (int, optional): The half-width of the cropping area. Default is 80.
         """
         image,white_bg,bg = self.load_image()
-        image,image_no_bg = self.erode_and_add_bf(image,white_bg)
+        image,image_no_bg = self.erode_and_add_bf(image,white_bg, **kwargs)
 
         pixels = np.vstack(np.where(np.array(image_no_bg) > 0)).T
         cm = np.mean(pixels,0).astype(int)
@@ -173,8 +176,8 @@ class Frame(Camera):
     def save_croped_images(self):
         image_rgb = self.image.convert('RGB')
         im_np = np.array(image_rgb)
-        idx = np.where(im_np[:,:,0] == 0)
-        im_np[idx[0],idx[1],0] = 255
+        # idx = np.where(im_np[:,:,0] == 0)
+        # im_np[idx[0],idx[1],0] = 255
         image = Image.fromarray(im_np)
         image.save(f'{self.path}/images/{self.image_name}.jpg', format='JPEG', subsampling=0, quality=100)
 

@@ -343,6 +343,8 @@ if __name__ == "__main__":
     path = f'{lp.source_path}/dict/frames_model.pkl'
     with open(path, 'rb') as file:
         data_dict = pickle.load(file)
+
+
     right_wing_angle = []
     left_wing_angle = []
     body_angle = []
@@ -404,6 +406,7 @@ if __name__ == "__main__":
         camera_pixel = np.vstack([frame.camera_center_to_pixel_ray(([frame.cm[0],frame.cm[1]])) for frame in  frames_per_cam])
         camera_center = np.vstack([frame.X0.T for frame in  frames_per_cam])
         cm_point = camera_frame_utils.triangulate_least_square(camera_center,camera_pixel)
+
 
 
 

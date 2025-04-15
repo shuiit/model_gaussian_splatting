@@ -4,17 +4,17 @@ close all
 clc
 
 exp = '2024_11_12_darkan'
-path = 'H:\My Drive\dark 2022\2023_08_09_60ms\hull\hull_Reorder\'
-easyWand_name = '10_8_23_allmovs_easyWandData.mat'
+path = 'H:\My Drive\Amitai\Bees + UV + magnetic field 14-9\movies\'
+easyWand_name = 'easyWand_14_9_easyWandData.mat'
 
 
-movie = 45
+movie = 7
 mov_name = sprintf('mov%d',movie)
-struct_file_name = sprintf('\\Shull_mov%d',movie)
-load([path,mov_name,'\hull_op\',struct_file_name])
+% struct_file_name = sprintf('\\Shull_mov%d',movie)
+% load([path,mov_name,'\hull_op\',struct_file_name])
 
-hull3d_file_name = sprintf('\\hull3d_mov%d',movie)
-load([path,mov_name,'\hull_op\',hull3d_file_name])
+% hull3d_file_name = sprintf('\\hull3d_mov%d',movie)
+% load([path,mov_name,'\hull_op\',hull3d_file_name])
 
 load([path,easyWand_name])
 
@@ -37,16 +37,16 @@ for cam = 1:1:4
 end
 
 %%
-path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\'
-save_path = [path,mov_name,'_',exp,'\','3d_pts','\']
-mkdir(save_path)
-
-hull_mat_file(hull3d.body.body4plot,[save_path,'body.mat'],hull3d.frames);
-
-hull_mat_file(hull3d.rightwing.hull.hull3d,[save_path,'rwing.mat'],hull3d.frames);
-hull_mat_file(hull3d.leftwing.hull.hull3d,[save_path,'lwing.mat'],hull3d.frames);
-
-real_coord(Shull,[save_path,'real_coord.mat'])
+% path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\'
+% save_path = [path,mov_name,'_',exp,'\','3d_pts','\']
+% mkdir(save_path)
+% 
+% hull_mat_file(hull3d.body.body4plot,[save_path,'body.mat'],hull3d.frames);
+% 
+% hull_mat_file(hull3d.rightwing.hull.hull3d,[save_path,'rwing.mat'],hull3d.frames);
+% hull_mat_file(hull3d.leftwing.hull.hull3d,[save_path,'lwing.mat'],hull3d.frames);
+% 
+% real_coord(Shull,[save_path,'real_coord.mat'])
 %%
 path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\'
 
@@ -59,19 +59,19 @@ save_images(sp,save_path)
 path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\'
 frame_sparse = 1000
 
-frame = find(Shull.frames == frame_sparse);
-body = hull3d.body.body4plot{frame};
-wing_left = hull3d.leftwing.hull.hull3d{frame};
-wing_right = hull3d.rightwing.hull.hull3d{frame};
+% frame = find(Shull.frames == frame_sparse);
+% body = hull3d.body.body4plot{frame};
+% wing_left = hull3d.leftwing.hull.hull3d{frame};
+% wing_right = hull3d.rightwing.hull.hull3d{frame};
 
 
-real_coords = Shull.real_coord{frame}
-body_3d = [real_coords{1}(body(:,1))',real_coords{2}(body(:,2))',real_coords{3}(body(:,3))']
-wing_left_3d = [real_coords{1}(wing_left(:,1))',real_coords{2}(wing_left(:,2))',real_coords{3}(wing_left(:,3))']
-wing_right_3d = [real_coords{1}(wing_right(:,1))',real_coords{2}(wing_right(:,2))',real_coords{3}(wing_right(:,3))']
-ew2lab = Shull.rotmat_EWtoL;
-fly = [body_3d;wing_left_3d;wing_right_3d];
-fly_h = [fly,ones(size(fly,1),1)];
+% real_coords = Shull.real_coord{frame}
+% body_3d = [real_coords{1}(body(:,1))',real_coords{2}(body(:,2))',real_coords{3}(body(:,3))']
+% wing_left_3d = [real_coords{1}(wing_left(:,1))',real_coords{2}(wing_left(:,2))',real_coords{3}(wing_left(:,3))']
+% wing_right_3d = [real_coords{1}(wing_right(:,1))',real_coords{2}(wing_right(:,2))',real_coords{3}(wing_right(:,3))']
+% ew2lab = Shull.rotmat_EWtoL;
+% fly = [body_3d;wing_left_3d;wing_right_3d];
+% fly_h = [fly,ones(size(fly,1),1)];
 
 for j= 1:1:4
 save_path = [path,mov_name,'_',exp,'\','camera_KRX0']
