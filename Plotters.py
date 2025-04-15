@@ -21,7 +21,7 @@ Created on Mon Jun  5 08:25:02 2023
 """
 
 
-def scatter3d(fig,data,color,size,legend,opa = 1,colorscale = 'gray',show_colorbar=True):
+def scatter3d(fig,data,color,size,legend,opa = 1,colorscale = 'gray',show_colorbar=True,mode='markers'):
     marker_dict = dict(
         color=color,  # Set marker color
         size=size,  # Set marker size
@@ -38,7 +38,7 @@ def scatter3d(fig,data,color,size,legend,opa = 1,colorscale = 'gray',show_colorb
         x=data[:, 0],
         y=data[:, 1],
         z=data[:, 2],
-        mode='markers',
+        mode=mode,
         marker=marker_dict,
         name = legend
     ))
@@ -99,4 +99,39 @@ def scatter_projections_from_gs(frames,gs, plot_image = False):
             axs[cam // 2,cam % 2].imshow(frames[image].croped_image,'gray')
             proj[:,1] = 800-proj[:,1]
         axs[cam // 2,cam % 2].scatter(proj[:,0],proj[:,1],s = 1,c = colors)
+
+    
+def plot_cones(fig, points, normals,skip = 10,sizeref = 1000,opacity = 0.5):
+
+    fig.add_trace(go.Cone(
+    x=points[::skip,0],
+    y=points[::skip,1],
+    z=points[::skip,2],
+    u=normals[::skip,0],
+    v=normals[::skip,1],
+    w=normals[::skip,2],
+    opacity= opacity,
+    sizemode="absolute",
+    showscale = False,
+    sizeref=sizeref))
+    fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=0.8),aspectmode = 'data',
+                             camera_eye=dict(x=1.2, y=1.2, z=0.6)))
+
+
+def plot_axis(fig, points, normals,sizeref = 1000,opacity = 0.5,**kwargs):
+
+    fig.add_trace(go.Cone(
+    x=[points[0]],
+    y=[points[1]],
+    z=[points[2]],
+    u=[normals[0]],
+    v=[normals[1]],
+    w=[normals[2]],
+    opacity= opacity,
+    sizemode="absolute",
+    showscale = False,
+    sizeref=sizeref,
+    **kwargs))
+    fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=0.8),aspectmode = 'data',
+                             camera_eye=dict(x=1.2, y=1.2, z=0.6)))
 
