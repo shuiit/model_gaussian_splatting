@@ -26,8 +26,10 @@ class Frame(Camera):
         if frames_dict:
             self.image_id = list(frames_dict[frame][0].keys())[frame_num]
             self.load_from_dict(frames_dict,frame,self.image_id,frame_num)  
-            self.image_name = frames_dict[frame][0][list(frames_dict[frame][0].keys())[frame_num]]['name'].split('.')[0]
-            self.bounding_box = frames_dict[frame][1][list(frames_dict[frame][0].keys())[frame_num]]['bounding_box']
+            frame_data = frames_dict[frame][0][list(frames_dict[frame][0].keys())[frame_num]]
+            self.image_name = frame_data['name'].split('.')[0]
+            if 'bounding_box' in frame_data:
+                self.bounding_box = frame_data['bounding_box'] 
             self.frame = frame
         else: 
             self.image_id = frame_num
