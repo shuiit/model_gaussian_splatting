@@ -3,12 +3,12 @@ clear
 close all
 clc
 
-exp = '2023_08_07_5ms'
-path = 'H:\My Drive\dark 2022\2023_08_07_5ms\hull\hull_Reorder\'
-easyWand_name = '7_8_23_easyWandData.mat'
+exp = '2023_08_09_60ms'
+path = 'H:\My Drive\dark 2022\2023_08_09_60ms\hull\hull_Reorder\'
+easyWand_name = '10_8_23_allmovs_easyWandData.mat'
 
 
-movie = 89
+movie = 1
 mov_name = sprintf('mov%d',movie)
 % struct_file_name = sprintf('\\Shull_mov%d',movie)
 % load([path,mov_name,'\hull_op\',struct_file_name])

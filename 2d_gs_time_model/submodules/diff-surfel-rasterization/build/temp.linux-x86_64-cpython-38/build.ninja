@@ -1,0 +1,36 @@
+ninja_required_version = 1.3
+cxx = /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/bin/x86_64-conda-linux-gnu-c++
+nvcc = /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/bin/nvcc
+
+cflags = -Wno-unused-result -Wsign-compare -DNDEBUG -fwrapv -O2 -Wall -fPIC -O2 -isystem /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -fPIC -O2 -isystem /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -fPIC -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/torch/csrc/api/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/TH -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/THC -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include/python3.8 -c
+post_cflags = -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=_C -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++17
+cuda_cflags = -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/torch/csrc/api/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/TH -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/lib/python3.8/site-packages/torch/include/THC -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include -I/cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/include/python3.8 -c
+cuda_post_cflags = -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -I/cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/third_party/glm/ -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=_C -D_GLIBCXX_USE_CXX11_ABI=0 -gencode=arch=compute_80,code=compute_80 -gencode=arch=compute_80,code=sm_80 -ccbin /cs/labs/tsevi/roni.maya/.conda/envs/nerfstudio/bin/x86_64-conda-linux-gnu-cc -std=c++17
+cuda_dlink_post_cflags = 
+ldflags = 
+
+rule compile
+  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags
+  depfile = $out.d
+  deps = gcc
+
+rule cuda_compile
+  depfile = $out.d
+  deps = gcc
+  command = $nvcc  $cuda_cflags -c $in -o $out $cuda_post_cflags
+
+
+
+
+
+build /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.linux-x86_64-cpython-38/cuda_rasterizer/backward.o: cuda_compile /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/cuda_rasterizer/backward.cu
+build /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.linux-x86_64-cpython-38/cuda_rasterizer/forward.o: cuda_compile /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/cuda_rasterizer/forward.cu
+build /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.linux-x86_64-cpython-38/cuda_rasterizer/rasterizer_impl.o: cuda_compile /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/cuda_rasterizer/rasterizer_impl.cu
+build /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.linux-x86_64-cpython-38/ext.o: compile /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/ext.cpp
+build /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.linux-x86_64-cpython-38/rasterize_points.o: cuda_compile /cs/labs/tsevi/roni.maya/2d_gs_time/submodules/diff-surfel-rasterization/rasterize_points.cu
+
+
+
+
+
+

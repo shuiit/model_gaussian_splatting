@@ -3,36 +3,56 @@ from Joint import Joint
 from Skin import Skin
 import numpy as np
 import torch
-
 def initilize_skeleton_and_skin(path_to_mesh,skeleton_scale = 1,skin_scale = 1):
     
     pitch_body = 0
-    root = Joint([0.3,0,0.8],[0.0,-pitch_body,0],parent = None, end_joint_of_bone = False, scale = skeleton_scale, name = 'root')
+    root = Joint([1.0,0,0],[0.0,-pitch_body,0],parent = None, end_joint_of_bone = False, scale = skeleton_scale, name = 'root')
+    # root = Joint([0.3,0,0.8],[0.0,-pitch_body,0],parent = None, end_joint_of_bone = False, scale = skeleton_scale, name = 'root')
+
     neck = Joint([0.6,0,0.3],[0.0,pitch_body,0],parent = root, end_joint_of_bone = False, scale = skeleton_scale,name = 'neck')
     neck_thorax =  Joint([0.6,0,0.3],[0.0,-25,0], parent = root, end_joint_of_bone = False, scale = skeleton_scale,name = 'neck_thorax')
     head  =Joint([0.3,0.0,0],[0,0,0.0], parent = neck, scale = skeleton_scale,name = 'head')
     thorax  =Joint([-1,0,0.0],[0,25,0.0], parent= neck_thorax ,scale = skeleton_scale,name = 'thorax')
     abdomen = Joint([-1.3,0,0.0],[0.0,0,0], parent = thorax, scale = skeleton_scale,name = 'abdomen')
-    right_sp_no_bone = Joint([0,-0,0.5],[0.0,pitch_body,0],parent = root , scale = skeleton_scale, end_joint_of_bone = False, color = 'red', rotation_order = 'zxy',name = 'right_sp_no_bone')
-    right_wing_root = Joint([0,-0.5,-0],[0.0,0,0], parent = right_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_root')
-    right_wing_center1 = Joint([0.05,-0.5,0.],[0.0,0,0], parent = right_wing_root,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_center1')
-    right_wing_center2 = Joint([0.05,-0.5,0],[0.0,0,0], parent = right_wing_center1,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_center2')
-    right_wing_tip = Joint([-0.25,-0.5,0],[0.0,0,0], parent = right_wing_center2, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_tip')
+
+    right_sp_no_bone = Joint([0,0,0.34],[0.0,pitch_body,0],parent = root, end_joint_of_bone = False , scale = skeleton_scale, color = 'red', rotation_order = 'zxy',name = 'right_sp_no_bone')
+    right_wing_root = Joint([0,-0.34,-0.05],[0.0,0,0], parent = right_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_root')
+    right_wing_joint1 = Joint([0.05,-0.7,0],[0.0,0,0], parent = right_wing_root,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_joint1')
+    right_wing_joint2 = Joint([0.05,-0.9,0],[0.0,0,0], parent = right_wing_joint1,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_joint2')
+    right_wing_tip = Joint([-0.25,-0.6,0],[0.0,0,0], parent = right_wing_joint2, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_tip')
+
+    # right_sp_no_bone = Joint([0,-0,0.5],[0.0,pitch_body,0],parent = root , scale = skeleton_scale, end_joint_of_bone = False, color = 'red', rotation_order = 'zxy',name = 'right_sp_no_bone')
+    # right_wing_root = Joint([0,-0.5,-0],[0.0,0,0], parent = right_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_root')
+    # right_wing_center1 = Joint([0.05,-0.5,0.],[0.0,0,0], parent = right_wing_root,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_center1')
+    # right_wing_center2 = Joint([0.05,-0.6,0],[0.0,0,0], parent = right_wing_center1,  scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_center2')
+    # right_wing_tip = Joint([-0.25,-0.8,0],[0.0,0,0], parent = right_wing_center2, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_tip')
     
-    left_sp_no_bone = Joint([0,0,0.5],[0.0,pitch_body,0], parent = root, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_sp_no_bone')
-    left_wing_root = Joint([-0.,0.5,-0],[0.0,0,0],parent = left_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_root')
-    left_wing_joint1 = Joint([0.05,0.5,0],[0.0,0,0], parent = left_wing_root,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'right_wing_center')
-    left_wing_joint2 = Joint([0.05,0.5,0],[0.0,0,0], parent = left_wing_joint1,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'right_wing_center')
-    left_wing_tip = Joint([-0.25,0.5,0],[0.0,0,0], parent =left_wing_joint2, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_tip')
+    
+    left_sp_no_bone = Joint([0,0,0.34],[0.0,pitch_body,0], parent = root, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_sp_no_bone')
+    left_wing_root = Joint([0,0.34,-0.05],[0.0,0,0],parent = left_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_root')
+    left_wing_joint1 = Joint([0.05,0.7,0],[0.0,0,0], parent = left_wing_root,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_joint1')
+    left_wing_joint2 = Joint([0.05,0.9,0],[0.0,0,0], parent = left_wing_joint1,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_joint2')
+    left_wing_tip = Joint([-0.25,0.6,0],[0.0,0,0], parent =left_wing_joint2, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_tip')
+
+    # left_sp_no_bone = Joint([0,0,0.5],[0.0,pitch_body,0], parent = root, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_sp_no_bone')
+    # left_wing_root = Joint([-0.,0.5,-0],[0.0,0,0],parent = left_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_root')
+    # left_wing_joint1 = Joint([0.05,0.5,0],[0.0,0,0], parent = left_wing_root,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'right_wing_center')
+    # left_wing_joint2 = Joint([0.05,0.6,0],[0.0,0,0], parent = left_wing_joint1,  scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'right_wing_center')
+    # left_wing_tip = Joint([-0.25,0.8,0],[0.0,0,0], parent =left_wing_joint2, scale = skeleton_scale, color = 'blue',rotation_order = 'zxy',name = 'left_wing_tip')
 
     list_joints_pitch_update = [neck,right_sp_no_bone,left_sp_no_bone]
 
-
-    body = Skin(f'{path_to_mesh}/body_bee_v3.stl',scale = skin_scale,color = 'lime')
-    right_wing = Skin(f'{path_to_mesh}/right_wing_v3.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
-    left_wing = Skin(f'{path_to_mesh}/left_wing_v3.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
+#right_wing_large_thin_y2
+    body = Skin(f'{path_to_mesh}/body_remesh.stl',scale = skin_scale,color = 'lime')
+    right_wing = Skin(f'{path_to_mesh}/right_wing_large_thin_y2.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
+    left_wing = Skin(f'{path_to_mesh}/left_wing_large_thin_y2.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
+    
+    # body = Skin(f'{path_to_mesh}/body_bee_v3.stl',scale = skin_scale,color = 'lime')
+    # right_wing = Skin(f'{path_to_mesh}/right_wing_v3.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
+    # left_wing = Skin(f'{path_to_mesh}/left_wing_v3.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
 
     return root,body,right_wing,left_wing,list_joints_pitch_update
+
 
 def build_skeleton(root,body,right_wing,left_wing,skin_translation = torch.tensor([-0.1/1000-1/1000,0,1/1000], device = 'cuda')):
 

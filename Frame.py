@@ -4,6 +4,7 @@ from PIL import Image
 from Camera import Camera
 import numpy as np
 import scipy.io
+import h5py
 import matplotlib.pyplot as plt
 from skimage.exposure import match_histograms
 class Frame(Camera):
@@ -26,7 +27,7 @@ class Frame(Camera):
             self.image_id = list(frames_dict[frame][0].keys())[frame_num]
             self.load_from_dict(frames_dict,frame,self.image_id,frame_num)  
             self.image_name = frames_dict[frame][0][list(frames_dict[frame][0].keys())[frame_num]]['name'].split('.')[0]
-            
+            self.bounding_box = frames_dict[frame][1][list(frames_dict[frame][0].keys())[frame_num]]['bounding_box']
             self.frame = frame
         else: 
             self.image_id = frame_num
@@ -72,7 +73,16 @@ class Frame(Camera):
 
 
         # self.bounding_box = [max(0,cm[1] - delta_xy), max(0,cm[0]-delta_xy), max(0,cm[1] - delta_xy) + delta_xy*2 , max(0,cm[0]-delta_xy) + delta_xy*2] # [top left, bottom right]
+    def load_h5_interest_point(self,path,h5_file_name = 'trainset_movie_1_370_520_ds_3tc_7tj.h5',ground_truth_file = '/ground_truth_labels'):
+        h5_file  = h5py.File(f'{path}/{h5_file_name}', "r")
+        ground_truth = scipy.io.loadmat(f'{path}/{ground_truth_file}.mat')['ground_truth']
+        return h5_file['cropzone'],ground_truth
 
+    def interest_point_crop(self,path,frame0 = 370,**kwargs):
+        crop,ground_truth = self.load_h5_interest_point(path,**kwargs)
+        crops_tl = crop[self.frame - frame0][self.camera_number]  - np.array([1,1])
+        interest_point = ground_truth[:,:,self.camera_number,self.frame - frame0]
+        self.interest_points = crops_tl + np.fliplr(interest_point)  - self.bounding_box[0:2]
 
     def load_and_crop_image(self,delta_xy = 80, **kwargs):
         """

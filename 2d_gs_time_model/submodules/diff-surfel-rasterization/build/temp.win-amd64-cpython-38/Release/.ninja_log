@@ -1,0 +1,6 @@
+# ninja log v5
+14	9250	7563043182992298	D:/Documents/gaussian_splat_fly/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.win-amd64-cpython-38/Release/cuda_rasterizer/forward.obj	3482e6f40d670b59
+10	9304	7563043183521992	D:/Documents/gaussian_splat_fly/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.win-amd64-cpython-38/Release/cuda_rasterizer/backward.obj	f8a97dd6d0a7eba3
+17	15819	7563043248624477	D:/Documents/gaussian_splat_fly/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.win-amd64-cpython-38/Release/cuda_rasterizer/rasterizer_impl.obj	aaf57318c4262b9a
+20	18430	7563043274649554	D:/Documents/gaussian_splat_fly/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.win-amd64-cpython-38/Release/ext.obj	e0f65ba3c2dd8485
+25	50420	7563043594338341	D:/Documents/gaussian_splat_fly/2d_gs_time/submodules/diff-surfel-rasterization/build/temp.win-amd64-cpython-38/Release/rasterize_points.obj	98655241f2df03a3
