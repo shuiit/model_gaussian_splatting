@@ -135,3 +135,55 @@ def plot_axis(fig, points, normals,sizeref = 1000,opacity = 0.5,**kwargs):
     fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=0.8),aspectmode = 'data',
                              camera_eye=dict(x=1.2, y=1.2, z=0.6)))
 
+
+
+
+def plot_interest_points_hist(width,hight,hist_points,points_to_plot, title):
+    fig,ax = plt.subplots(width,hight,sharex = True)
+    for idx,points in enumerate(points_to_plot):
+        row  = idx // width
+        col = idx % width
+        ax[row][col].hist(hist_points[:,:,points].flatten())
+        ax[row,col].set_title(f'{title[idx]} mean {np.mean(points):.2f} std{np.std(points):.2f})')
+        ax[row,col].set_xlabel(f'Reprojection error [pixels]')
+
+    plt.tight_layout()
+
+def plot_cameras_points_hist(width,hight,hist_points):
+    fig,ax = plt.subplots(width,hight,sharex = True)
+    for idx,points in enumerate(np.hstack(hist_points[:,:,:])):
+        
+        ax[idx//2,np.mod(idx,width)].hist(points) 
+        ax[idx//2,np.mod(idx,width)].set_title(f'Camera{idx + 1} mean {np.mean(points):.2f} std {np.std(points):.2f}')
+        ax[idx//2,np.mod(idx,width)].set_xlabel(f'Reprojection error [pixels]')
+
+
+    plt.tight_layout()
+
+
+def plot_subplot_hist_wing(width,height,hist_points):
+    fig, ax = plt.subplots(height, width, sharex=True, figsize=(12, 6))
+    ax = ax.reshape(height, width)  # Ensures consistent 2D indexing
+    for idx,hist_data in enumerate(hist_points):
+        row  = idx // width
+        col = idx % width
+        mean = np.mean(hist_data)
+        std = np.std(hist_data)
+        ax[row][col].hist(hist_data)
+        title = f'wing {idx} mean = {mean:.2f}, std = {std:.2f}' 
+        ax[row,col].set_title(title)
+        ax[row,col].set_xlabel(f'3D distance [mm]')
+
+    plt.tight_layout()
+
+
+
+def plot_body_hist(width,height,body_points,hist_points,title):
+    fig,ax = plt.subplots(width,height,sharex = True)
+    for idx,point in enumerate(body_points):
+        histogram_data = hist_points[:,:,body_points[idx]].flatten()
+        mean = np.mean(histogram_data)
+        std = np.std(histogram_data)
+        ax[idx].hist(hist_points[:,:,body_points[idx]].flatten())
+        title_str = f'{title[idx]}  mean = {mean:.2f}, std = {std:.2f}' 
+        ax[idx].set_title(title_str)

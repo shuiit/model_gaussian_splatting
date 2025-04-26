@@ -83,14 +83,12 @@ class Frame_Pose():
 
     def ransac_for_le(self,wing_le):
         
-        model_robust, inliers = ransac(wing_le, LineModelND, min_samples=2, residual_threshold=5/100000, max_trials=1000
-        )
+        model_robust, inliers = ransac(wing_le, LineModelND, min_samples=2, residual_threshold=5/100000, max_trials=1000)
         origin, direction = model_robust.params
         return origin, direction
     
 
     def wing_le(self,wing_xyz,span,chord):
-        
         wing_le = self.get_wing_le(wing_xyz,span,chord)
         wing_origin, r_wing_direction = self.ransac_for_le(wing_le)
         return wing_origin, r_wing_direction,wing_le

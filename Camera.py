@@ -80,9 +80,13 @@ class Camera():
         self.getProjectionMatrix(self.image_size)
         
     def camera_center_to_pixel_ray(self,pixels):
-        
-        ray_ndc = [(pixels[1] - self.cx)/self.fx,(pixels[0] - self.cy)/self.fy,1]
-        return  np.dot(self.R.T,ray_ndc) + self.X0.T
+        pixels = np.atleast_2d(pixels)
+        ray_x = (pixels[:,1] - self.cx)/self.fx
+        ray_y = (pixels[:,0] - self.cy)/self.fy
+        ones = np.ones(ray_y.shape)
+        ray_ndc = np.vstack((ray_x,ray_y,ones))
+        return np.dot(self.R.T,ray_ndc).T + self.X0.T
+     
         
     def rotation_matrix_from_vectors(self,vec1, vec2):
         """ Find the rotation matrix that aligns vec1 to vec2

@@ -26,11 +26,15 @@ class Frame(Camera):
         if frames_dict:
             self.image_id = list(frames_dict[frame][0].keys())[frame_num]
             self.load_from_dict(frames_dict,frame,self.image_id,frame_num)  
-            frame_data = frames_dict[frame][0][list(frames_dict[frame][0].keys())[frame_num]]
-            self.image_name = frame_data['name'].split('.')[0]
-            if 'bounding_box' in frame_data:
-                self.bounding_box = frame_data['bounding_box'] 
+            frame_rot_trans = frames_dict[frame][0][self.image_id]
+            frame_data_and_bb = frames_dict[frame][1][self.image_id]
+            self.image_name = frame_rot_trans['name'].split('.')[0]
+            if 'bounding_box' in frame_data_and_bb:
+                self.bounding_box = frame_data_and_bb['bounding_box'] 
             self.frame = frame
+            if 'ew_to_lab' in frame_data_and_bb:
+                self.ew_to_lab = frame_data_and_bb['ew_to_lab']
+
         else: 
             self.image_id = frame_num
             self.image_name = frame
@@ -43,7 +47,7 @@ class Frame(Camera):
         y,x = np.where((np.array(self.im) < 250) )
         self.pixels = np.vstack([y,x]).T
         self.cm = np.mean(self.pixels,0)
-
+        
     
     def load_image(self):
    

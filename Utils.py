@@ -87,6 +87,31 @@ def pickle_file(dict, file_name):
     with open(file_name, 'wb') as f:
         pickle.dump(dict, f)
 
+def stack_filter_hist_points_2d(frames_list, top_perc_ol,points_to_plot_rwing,points_to_plot_lwing):
+    hist_points = np.stack([frame.dist_from_interest_point_2d for frame in frames_list ])
+    hist_points = np.stack([[np.sort(hist_points[:,cam,idx])[0:int(len(hist_points[:,cam,idx]) - top_perc_ol*len(hist_points[:,cam,idx]))] for cam in  range(4)] for idx in range(hist_points.shape[2])])
+    hist_points = np.swapaxes(hist_points,0,2)
+    return  [np.vstack((hist_points[:,:,points_to_plot_rwing],hist_points[:,:,points_to_plot_lwing]))[:,:,idx].flatten() for idx,points in enumerate(points_to_plot_lwing)]
+
+
+
+def stack_filter_hist_points_3d(frames_list, top_perc_ol,points_to_plot_rwing,points_to_plot_lwing):
+    """Sort and cut off top percentage for outlier removal."""
+    hist_points = np.stack([frame.dist_from_interest_point for frame in frames_list ])*1000
+    hist_points = np.stack([np.sort(hist_points[:,idx])[0:int(len(hist_points[:,idx]) - top_perc_ol*len(hist_points[:,idx]))] for idx in range(hist_points.shape[1])])
+    return [np.vstack((hist_points[points_to_plot_rwing,:],hist_points[points_to_plot_lwing,:]))[idx,:].flatten() for idx,points in enumerate(points_to_plot_lwing)]
+
+
+def stack_filter_hist_all_2d(frames_list,points_to_plot,top_perc_ol):
+    hist_points = np.stack([frame.dist_from_interest_point_2d[:,points_to_plot] for frame in frames_list ])
+    hist_points = np.stack([[np.sort(hist_points[:,cam,idx])[0:int(len(hist_points[:,cam,idx]) - top_perc_ol*len(hist_points[:,cam,idx]))] for cam in  range(4)] for idx in range(hist_points.shape[2])])
+    return np.swapaxes(hist_points,0,2)
+
+
+def stack_filter_hist_all_3d(frames_list,top_perc_ol):
+    hist_points_3d = np.stack([frame.dist_from_interest_point for frame in frames_list ])
+    return np.stack([np.sort(hist_points_3d[:,idx])[0:int(len(hist_points_3d[:,idx]) - top_perc_ol*len(hist_points_3d[:,idx]))] for idx in range(hist_points_3d.shape[1])])
+
 
 # def intersection_per_cam(frames_per_cam,cam_num,ptcloud_volume):    
 #     ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)
