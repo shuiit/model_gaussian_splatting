@@ -50,7 +50,7 @@ class FlyOutput:
         return [frame.interest_point_crop(interest_point_h5_path,frame0 = self.frame0) for frame in self.frames]
         
 
-    def intersect_interest_pixels(self):
+    def triangulate_interest_pixels(self):
         camera_center_to_pixel = np.stack([frame.camera_center_to_pixel_ray(frame.interest_points) for frame in self.frames])
         cam_center = np.hstack([frame.X0 for frame in self.frames]).T 
         projected_wing = np.argsort([np.unique(frame.project_with_proj_mat(self.right_wing_ew)[:,0:2].astype(int),axis = 0).shape[0] for frame in self.frames])
@@ -77,16 +77,18 @@ class FlyOutput:
 
 
     def get_all_interest_2d_projection(self, interest_points =  [0,1,2,3,4,5,7,8,9,10,11,12,13,15,16,17]):
-        self.projected_interest = np.stack([frame.project_with_proj_mat(self.interest_points_3d)[:,0:2] for frame in self.frames])
+        self.projected_interest = np.stack([np.fliplr(frame.project_with_proj_mat(self.interest_points_3d)[:,0:2]) for frame in self.frames])
         self.interest_points = np.stack([ frame.interest_points for frame in self.frames])
         self.projected_interest_gaussians = np.stack([frame.project_with_proj_mat(self.gaussian_closest_to_interest_ew)[:,0:2] for frame in self.frames])
         self.dist_from_interest_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points[:,interest_points,:])**2,axis = 2))
         self.dist_from_interest_point = np.sqrt(np.sum((self.gaussian_closest_to_interest_ew - self.interest_points_3d[interest_points,:])**2,axis = 1))
+        self.dist_interest_from_projected = np.sqrt(np.sum((self.projected_interest[:,interest_points,:] - self.interest_points[:,interest_points,:])**2,axis = 2))
+
 
 
     def interest_load_and_intersect(self,interest_point_h5_path, num_of_bins= 20):
         self.add_interest_point(interest_point_h5_path)
-        self.intersect_interest_pixels()
+        self.triangulate_interest_pixels()
       
 
     def get_principle_axes(self,frame_xyz):
