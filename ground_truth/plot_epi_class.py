@@ -3,17 +3,39 @@
 
 from EpiPolar import EpiPolar
 import pickle
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy as np
+matplotlib.use('TkAgg')
+plt.ion()
+image_path = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/'
+dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/dict/frames_model.pkl'
+image_path = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov30_2024_11_12_darkan/'
+dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov30_2024_11_12_darkan/frames_model_evaluation.pkl'
+frame = 1433
 
-image_path = 'I:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/'
-dict_path  = 'I:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/dict/frames_model.pkl'
-frame = 370
-
+# frame = 439
+width = 2
 with open(dict_path,'rb') as f:
     frames_dict = pickle.load(f)
 
-epi = EpiPolar(image_path,frame,frames_dict)
-epi.get_n_colors(80)
-fig, axs = epi.plot_frame()
-fig.show()
-fig.canvas.mpl_connect('button_press_event', lambda event: epi.on_click(event, axs))
-fig.show()
+
+for wing in ['wing1','wing2']:
+    save_file_name = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evalutation/points/mov1/{wing}_gt_points_frame{frame}.pkl'
+    epi = EpiPolar(image_path,frame,frames_dict, save_file_name)
+    fig, axs = epi.plot_frame()
+    if wing == 'wing2':
+        file_to_plot = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evalutation/points/mov1/wing1_gt_points_frame{frame}.pkl'
+
+        with open(file_to_plot,'rb') as f:
+            interest_points = pickle.load(f) 
+        [axs[idx // width,idx % width].scatter(np.vstack(pixels)[:,0], np.vstack(pixels)[:,1], c='red',s = 3) for idx,pixels in enumerate(interest_points.values())]
+
+
+    epi.get_n_colors(80)
+
+
+    # fig.show()
+    fig.canvas.mpl_connect('button_press_event', lambda event: epi.on_click(event, axs))
+    plt.show(block = True)   
+    

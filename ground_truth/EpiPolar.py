@@ -21,7 +21,7 @@ from matplotlib import colors as mcolors
 
 
 class EpiPolar:
-    def __init__(self,image_path,frame,frames_dict):
+    def __init__(self,image_path,frame,frames_dict, save_file_name ):
         self.frames = [Frame(image_path,frame,cam,frames_dict = frames_dict) for cam in range(4)] 
 
 
@@ -37,13 +37,17 @@ class EpiPolar:
             self.dict_cameras[f'cam{cam[0] + 1}'].append(self.fundamental[idx])
 
         self.wing_pixels = {f'cam{idx + 1}':[] for idx in range(4)}
+        self.wing_pixels_result = {}
         self.list_click = []
+        self.plotted_artists = []
+        self.save_file_name = save_file_name
 
     def plot_frame(self, width = 2, hight = 2):
         
         fig, axs = plt.subplots(width, hight)
         for idx in range(4):        
-            axs[idx // width,idx % width].imshow(np.array(self.frames[idx].im),cmap = 'gray')
+            axs[idx // width,idx % width].imshow(255-np.array(self.frames[idx].im),cmap = 'gray')
+        
 
         return fig, axs
 
@@ -120,67 +124,74 @@ class EpiPolar:
         self.colors = colors * math.ceil(n / len(colors))
 
 
+    def remove_epi_lines(self,axs,width = 2):
+    
+        self.list_click.clear()
+        
+        for artist in self.plotted_artists:
+            artist.remove()
+        self.plotted_artists.clear()  # Clear the list after removing
+        plt.draw()
+        with open(self.save_file_name, 'wb') as f:
+            pickle.dump(self.wing_pixels, f)
+        [axs[idx // width,idx % width].scatter(np.vstack(pixels)[:,0], np.vstack(pixels)[:,1], c='red',s = 3) for idx,pixels in enumerate(self.wing_pixels.values()) if len(pixels) > 0]
+        
+    def calculate_epi_lines(self,fundamental,clicked_pixel,idx):
+
+        fund = fundamental[idx]
+        pix_h = np.append(clicked_pixel, 1)
+        epiLines = pix_h @ fund.T
+        return self.lineToBorderPoints(np.atleast_2d(epiLines), [160,160])
 
 
+
+    def plot_epi(self,fundamental,clicked_pixel,cam_idx,axs,cam_to,color,idx,width = 2):
+    
+
+        pts = self.calculate_epi_lines(fundamental,clicked_pixel,idx)
+
+        scatter = axs[cam_idx // width,cam_idx % width].scatter(clicked_pixel[0], clicked_pixel[1], c=color)
+        lines = np.stack([pts[:, :2], pts[:, 2:]], axis=1)
+        collection = collections.LineCollection(lines, colors=color)
+        axs[cam_to // width,cam_to % width].add_collection(collection)
+
+        # Save the artists for later removal
+        self.plotted_artists.append(scatter)
+        self.plotted_artists.append(collection)
+        
 
     def on_click(self,event,axs, width = 2):
 
-        # Check if the click happened inside the plot
-        # if event.xdata is None or event.ydata is None:
-        #     return  # Don't do anything if the click was outside the image
-       
+        if event.inaxes is not None:
+            cam_idx = np.argwhere(axs == event.inaxes)[0]
+            cam_idx = cam_idx[0] * axs.shape[1] + cam_idx[1]
+        else:
+            return
+
         clicked_pixel = np.array([event.xdata, event.ydata])
         self.list_click.append(clicked_pixel)
         
-        clicked_axis = event.inaxes
-        if clicked_axis == axs[0][0]:
-            cam_idx = 0
-        elif clicked_axis == axs[0][1]:
-            cam_idx = 1
-        elif clicked_axis == axs[1][0]:
-            cam_idx = 2
-        elif clicked_axis == axs[1][1]:
-            cam_idx = 3
+
         if event.button == 1:  # Left click: ADD POINT
+
             self.wing_pixels[f'cam{cam_idx +1}'].append(clicked_pixel)
             fundamental = self.dict_cameras[f'cam{cam_idx +1}'] 
             rand_idx = random.randint(0, len(self.colors))
             color = self.colors[rand_idx]
-            
             cam_to = [idx for idx in range(4) if idx != cam_idx]  
-            for idx, cam_to in enumerate(cam_to):
+            [self.plot_epi(fundamental,clicked_pixel,cam_idx,axs,cam_to,color,idx,width = 2) for idx, cam_to in enumerate(cam_to)]
+            plt.pause(0.01)
+            if len(self.list_click) == 4:
+                self.remove_epi_lines(axs)
 
-                fund = fundamental[idx]
-                pix_h = np.append(clicked_pixel, 1)
-                epiLines = pix_h @ fund.T
-                pts = self.lineToBorderPoints(np.atleast_2d(epiLines), [160,160])
-
-
-                scatter = axs[cam_idx // width,cam_idx % width].scatter(clicked_pixel[0], clicked_pixel[1], c=color)
-                lines = np.stack([pts[:, :2], pts[:, 2:]], axis=1)
-                collection = collections.LineCollection(lines, colors=color)
-                axs[cam_to // width,cam_to % width].add_collection(collection)
-
-                # Save the artists for later removal
-                # plotted_artists.append(scatter)
-                # plotted_artists.append(collection)
-
+        if event.button == 3:  # Right click: REMOVE LAST POINT
+            for wing_pixels_key in self.wing_pixels.keys(): 
+                if len(self.wing_pixels[wing_pixels_key]) > 0:
+                    array = np.vstack(self.wing_pixels[wing_pixels_key])
+                    idx_to_remove = [np.where((clicked == array).all(axis = 1))[0]  for clicked in self.list_click if len(np.where((clicked == array).all(axis = 1))[0])>0 ]
+                    if len(idx_to_remove) > 0:
+                        self.wing_pixels[wing_pixels_key] = [pt for i, pt in enumerate(self.wing_pixels[wing_pixels_key]) if i not in idx_to_remove]
+            self.remove_epi_lines(axs)
                 
-                plt.pause(0.01)
-
-                # if len(list_click) == 4:
-                #     # Remove only the scatter and lines
                     
-                #     list_click.clear()
-                #     wing_pixels_result.update(wing_pixels)
-                #     print(wing_pixels)
-                #     for artist in plotted_artists:
-                #         artist.remove()
-                #     plotted_artists.clear()  # Clear the list after removing
-                #     plt.draw()
-                #     with open(file_name, 'wb') as f:
-                #         pickle.dump(wing_pixels_result, f)
-                #         print(f"Saved to {file_name}")
                     
-                # [axs[idx // width,idx % width].scatter(np.vstack(pixels)[:,0], np.vstack(pixels)[:,1], c='red',s = 3) for idx,pixels in enumerate(wing_pixels.values())]
-                

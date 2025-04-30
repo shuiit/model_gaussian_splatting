@@ -90,6 +90,9 @@ class Frame(Camera):
         interest_point = ground_truth[:,:,self.camera_number,self.frame - frame0]
         self.interest_points = crops_tl + np.fliplr(interest_point)  - self.bounding_box[0:2]
 
+    def add_interest_point(self,interest_point,**kwargs):
+        self.interest_points = interest_point
+
     def load_and_crop_image(self,delta_xy = 80, **kwargs):
         """
         Crop the image around the mean pixel coordinates.

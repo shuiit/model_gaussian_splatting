@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 import pickle
 from scipy.spatial import cKDTree
-
+from math import atan2
 
 
 def rotate_vector_direction_and_clip(rotation_matrix, vector_points, scale_vector):
@@ -56,7 +56,46 @@ def triangulate_least_square(origins,end_of_vectors):
     c = np.sum([np.dot(mat,vec) for mat,vec in zip(inner,origins)],axis = 0)
     return  np.linalg.solve(s,c)
 
+def dist_points(x1,x2):
+    return np.sqrt(np.sum((x1 - x2)**2, axis = 1))
 
+def project_to_plane(points, origin, x_axis, y_axis):
+    centered = points - origin
+    x_coords = np.dot(centered, x_axis)
+    y_coords = np.dot(centered, y_axis)
+    return np.stack((x_coords, y_coords), axis=1)
+
+def fit_poly(pts, degree = 2, num_of_fit_point = 1000):
+    
+    dists = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+    t = np.insert(np.cumsum(dists), 0, 0)  # insert 0 at the beginning
+    p = [np.polyfit(t, pts, degree) for pts in pts.T]
+    t_fit = np.linspace(t[0], t[-1], num_of_fit_point)
+    return np.vstack([np.polyval(p, t_fit) for p in p]).T
+
+
+def fit_all_points(points,skip_points = 3, **kwargs):
+    
+    pts_to_fit = [points[k:k+skip_points] for k in range(0,points.shape[0],skip_points)]
+    return  np.vstack([fit_poly(pts, **kwargs) for pts in pts_to_fit[:-1] ])
+
+
+def argsort(seq):
+    #http://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python/3382369#3382369
+    #by unutbu
+    #https://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python 
+    # from Boris Gorelik
+    return sorted(range(len(seq)), key=seq.__getitem__)
+
+def rotational_sort(list_of_xy_coords, centre_of_rotation_xy_coord, clockwise=True):
+    cx,cy=centre_of_rotation_xy_coord
+    angles = [atan2(x-cx, y-cy) for x,y in list_of_xy_coords]
+    indices = argsort(angles)
+    # if clockwise:
+    #     return [list_of_xy_coords[i] for i in indices]
+    # else:
+    #     return [list_of_xy_coords[i] for i in indices[::-1]]
+    return indices
 
 def intersection_per_cam(frames_per_cam, cam_num, ptcloud_volume, tol=1.0):
     """Efficiently finds intersecting 3D points projected onto a camera image plane."""
