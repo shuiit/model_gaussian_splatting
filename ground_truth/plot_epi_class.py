@@ -6,13 +6,21 @@ import pickle
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
+import os
 matplotlib.use('TkAgg')
 plt.ion()
+
+mov_frame = 'mov_132_frame_384'
+mov = int(mov_frame.split('_')[1]) 
+frame = int(mov_frame.split('_')[3]) 
+
+
 image_path = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/'
-dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/dict/frames_model.pkl'
-image_path = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov30_2024_11_12_darkan/'
-dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov30_2024_11_12_darkan/frames_model_evaluation.pkl'
-frame = 1433
+dict_path  = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/{mov}_2023_08_09_60ms/dict/frames_model.pkl'
+dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/frames_model_evaluation.pkl'
+
+
+
 
 # frame = 439
 width = 2
@@ -21,11 +29,17 @@ with open(dict_path,'rb') as f:
 
 
 for wing in ['wing1','wing2']:
-    save_file_name = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evalutation/points/mov1/{wing}_gt_points_frame{frame}.pkl'
-    epi = EpiPolar(image_path,frame,frames_dict, save_file_name)
+    mov = frames_dict[frame][-1]['mov_name']
+    image_path = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov{mov}_2023_08_09_60ms/'
+    save_dir = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/points/mov{mov}/'
+    save_file_name = f'{wing}_gt_points_frame{frame}.pkl'
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    epi = EpiPolar(image_path,frame,frames_dict, f'{save_dir}/{save_file_name}')
     fig, axs = epi.plot_frame()
     if wing == 'wing2':
-        file_to_plot = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evalutation/points/mov1/wing1_gt_points_frame{frame}.pkl'
+        file_to_plot = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/points/mov{mov}/wing1_gt_points_frame{frame}.pkl'
 
         with open(file_to_plot,'rb') as f:
             interest_points = pickle.load(f) 

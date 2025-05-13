@@ -73,20 +73,25 @@ def build_skeleton(root,body,right_wing,left_wing,skin_translation = torch.tenso
     bones = body.bones
     return joint_list,skin,weights,bones
 
-def transform_pose(points,weights,root_rotation,list_joints_pitch_update,joint_list,bones,translation,right_wing_angles,left_wing_angles,right_wing_angles_center1,left_wing_angles_center,right_wing_angles_center2):
+def transform_pose(points,weights,root_rotation,list_joints_pitch_update,joint_list,bones,translation,right_wing_angles,
+                   left_wing_angles,right_wing_angles_joint1,left_wing_angles_joint1,
+                   right_wing_twist_joint1,left_wing_twist_joint1,right_wing_angles_joint2,left_wing_angles_joint2,
+                   right_wing_twist_joint2,left_wing_twist_joint2):
     
-    joint_list[0].set_local_translation(translation)
-    joint_list[0].set_local_rotation(root_rotation)
+    joint_list[0].set_local_translation(translation[0],translation[1],translation[2])
+    joint_list[0].set_local_rotation(root_rotation[0],root_rotation[1],root_rotation[2])
 
 
-    [joint.set_local_rotation([root_rotation[0]*0,-root_rotation[1],root_rotation[0]*0]) for joint in list_joints_pitch_update]
-    joint_list[7].set_local_rotation(right_wing_angles)
-    joint_list[8].set_local_rotation(right_wing_angles_center1)
-    joint_list[9].set_local_rotation(right_wing_angles_center2)
+    [joint.set_local_rotation(root_rotation[0]*0,-root_rotation[1],root_rotation[0]*0) for joint in list_joints_pitch_update]
+    # joint_list[6].set_local_translation(right_wing_location,torch.tensor(-0).cuda(),torch.tensor(0.3/1000).cuda(),)
+    joint_list[7].set_local_rotation(right_wing_angles[0],right_wing_angles[1],right_wing_angles[2])
+    joint_list[8].set_local_rotation(torch.tensor(0.0).cuda(),right_wing_twist_joint1,right_wing_angles_joint1)
+    joint_list[9].set_local_rotation(torch.tensor(0.0).cuda(),right_wing_twist_joint2,right_wing_angles_joint2)
 
-
-    joint_list[12].set_local_rotation(left_wing_angles)
-    joint_list[13].set_local_rotation(left_wing_angles_center)
+    # joint_list[10].set_local_translation(left_wing_location,torch.tensor(0.).cuda(),torch.tensor(0.3/1000).cuda())
+    joint_list[12].set_local_rotation(left_wing_angles[0],left_wing_angles[1],left_wing_angles[2])
+    joint_list[13].set_local_rotation(torch.tensor(0.0).cuda(),left_wing_twist_joint1,left_wing_angles_joint1)
+    joint_list[14].set_local_rotation(torch.tensor(0.0).cuda(),left_wing_twist_joint2,left_wing_angles_joint2)
 
     [joint.update_rotation() for joint in joint_list]
 
@@ -94,6 +99,7 @@ def transform_pose(points,weights,root_rotation,list_joints_pitch_update,joint_l
     rotated_points = [joint.rotate_to_new_position(weight[:,None],points_homo) for weight,joint in zip(weights.T,bones)]
     skin_rotated = sum(rotated_points)[:,0:3]
     return skin_rotated
+
 
 
 

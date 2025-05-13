@@ -4,7 +4,8 @@ import scipy
 import pickle
 from scipy.spatial import cKDTree
 from math import atan2
-
+from scipy.signal import savgol_filter
+from scipy.interpolate import splprep, splev
 
 def rotate_vector_direction_and_clip(rotation_matrix, vector_points, scale_vector):
     
@@ -59,6 +60,33 @@ def triangulate_least_square(origins,end_of_vectors):
 def dist_points(x1,x2):
     return np.sqrt(np.sum((x1 - x2)**2, axis = 1))
 
+def project_point_on_line(points_to_project_on_line,line_points,indices):
+
+    points_of_line = line_points[indices:indices + 2]
+    line = (points_of_line[1] - points_of_line[0])/np.linalg.norm((points_of_line[1] - points_of_line[0]))
+    return np.dot(points_to_project_on_line - points_of_line[0],line)*line + points_of_line[0]
+
+
+def cyclic_sort(points,span,chord):
+    points_2d = project_to_plane(points, np.mean(points,axis = 0), span, chord)
+    cyclic_points = rotational_sort(points_2d, np.mean(points_2d,axis = 0), clockwise=True)
+    first_index = np.argmin(np.dot(span,points[cyclic_points].T))
+    return  points[np.roll(cyclic_points,first_index)]
+         
+
+def point_to_segment_projection(point, origin, point_line):
+    line = point_line - origin # the line - a vector
+    point_to_origin = point - origin # a vector from the point to the lines origin
+    line_sq_length = np.dot(line, line) # project the vector from the origin to the point on the line
+    t = np.dot(point_to_origin, line) / line_sq_length
+    if 0 <= t <= 1:
+        projection = origin + t * line
+        dist = np.linalg.norm(point - projection)
+        return dist
+    else:
+        return float('inf')
+
+
 def project_to_plane(points, origin, x_axis, y_axis):
     centered = points - origin
     x_coords = np.dot(centered, x_axis)
@@ -66,7 +94,7 @@ def project_to_plane(points, origin, x_axis, y_axis):
     return np.stack((x_coords, y_coords), axis=1)
 
 def fit_poly(pts, degree = 2, num_of_fit_point = 1000):
-    
+
     dists = np.linalg.norm(np.diff(pts, axis=0), axis=1)
     t = np.insert(np.cumsum(dists), 0, 0)  # insert 0 at the beginning
     p = [np.polyfit(t, pts, degree) for pts in pts.T]
@@ -76,7 +104,7 @@ def fit_poly(pts, degree = 2, num_of_fit_point = 1000):
 
 def fit_all_points(points,skip_points = 3, **kwargs):
     
-    pts_to_fit = [points[k:k+skip_points] for k in range(0,points.shape[0],skip_points)]
+    pts_to_fit = [points[k:k+skip_points] for k in range(0,points.shape[0],skip_points) ]
     return  np.vstack([fit_poly(pts, **kwargs) for pts in pts_to_fit[:-1] ])
 
 

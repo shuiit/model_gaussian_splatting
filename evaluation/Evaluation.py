@@ -1,0 +1,97 @@
+
+import pickle
+import os
+from FlyOutput import FlyOutput
+import Utils
+import numpy as np
+
+class Evaluation(FlyOutput):
+    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs):
+        super().__init__(image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs)
+        interest_points = self.load_parimiter(interest_points_path)
+        [frame.add_interest_point(np.fliplr(np.vstack(interest_point))) for interest_point, frame in zip(interest_points.values(),self.frames)]
+        self.triangulate_interest_pixels()
+        self.define_wings_interest_points()
+
+
+    def load_parimiter(self,dict_path):
+        dict_path = dict_path if os.path.exists(f'{dict_path}/wing1_gt_points_frame{self.frame_num}.pkl') else None
+        with open(f'{dict_path}/wing1_gt_points_frame{self.frame_num}.pkl','rb') as f1 \
+        ,open(f'{dict_path}/wing2_gt_points_frame{self.frame_num}.pkl','rb') as f2:
+            interest_points_wing1,interest_points_wing2 = pickle.load(f1),pickle.load(f2)
+        self.interest_point_shape = [len(interest_points_wing1) for interest_points_wing1 in interest_points_wing1.values()]
+        interest_points = {key: interest_points_wing1[key] + interest_points_wing2[key] for key in interest_points_wing1}
+        return interest_points
+    
+
+    
+    def triangulate_interest_pixels(self):
+        camera_center_to_pixel = np.stack([frame.camera_center_to_pixel_ray(frame.interest_points) for frame in self.frames])
+        cam_center = np.hstack([frame.X0 for frame in self.frames]).T 
+        projected_wing = np.argsort([np.unique(frame.project_with_proj_mat(self.right_wing_ew)[:,0:2].astype(int),axis = 0).shape[0] for frame in self.frames])
+        self.interest_points_3d = np.vstack([Utils.triangulate_least_square(cam_center[projected_wing[0:2],:],camera_center_to_pixel[projected_wing[0:2],idx,:]) for idx in range(camera_center_to_pixel.shape[1])])
+        self.rotated_points_3d = (self.ew_to_lab @ np.vstack(self.interest_points_3d).T).T
+
+
+    
+    def define_wings_interest_points(self):
+        mean_wing = np.mean(self.right_wing,axis = 0)
+        interest_points = self.rotated_points_3d
+        wings = [interest_points[0:self.interest_point_shape[0],:],interest_points[self.interest_point_shape[0]:,:]]
+
+        wings_idx = [list(range(self.interest_point_shape[0])),list(range(self.interest_point_shape[0],interest_points.shape[0]))]
+
+        mean_interest = [np.atleast_2d(np.mean(wing,axis = 0)) for wing in wings]
+        dist_interest_wing = [Utils.dist_points(mean_wing,mean_interest) for mean_interest in mean_interest]
+        idx_right_wing = np.argsort(np.hstack(dist_interest_wing))
+        # self.interest_left_wing_boundry = interest_points[wings_idx[idx_right_wing[1]]]
+        # self.interest_right_wing_boundry = interest_points[wings_idx[idx_right_wing[0] ]]
+
+        interest_right_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[0]]],self.right_wing_span,self.right_wing_chord)
+        interest_left_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[1]]],self.left_wing_span,self.left_wing_chord)
+
+        self.interest_right_wing_boundry = self.zscore(interest_right_wing_boundry)
+        self.interest_left_wing_boundry = self.zscore(interest_left_wing_boundry)
+
+
+
+    def point_to_segment_projection(self,point, origin, point_line):
+        line = point_line - origin # the line - a vector
+        point_to_origin = point - origin # a vector from the point to the lines origin
+        line_sq_length = np.dot(line, line) # project the vector from the origin to the point on the line
+        t = np.dot(point_to_origin, line) / line_sq_length
+        if 0 <= t <= 1:
+            projection = origin + t * line
+            dist = np.linalg.norm(point - projection)
+            return dist
+        else:
+            return float('inf')
+        
+
+
+# dist_closest_interest_to_gs = []
+
+    def get_indices_closest_points_to_line(self, points,points_of_line):
+        return np.argmin([self.point_to_segment_projection(points, points_of_line[k], points_of_line[k+1]) for k in range(points_of_line.shape[0] - 1)])
+
+
+    def run_all_points_get_closest(self, points, points_of_line):
+        return [self.get_indices_closest_points_to_line(points[idx], points_of_line) for idx in range(points.shape[0])]
+
+
+
+    def get_projected_points_on_line(self,points_to_project_on_line,line_points,indices):
+        return np.vstack([Utils.project_point_on_line(points_to_project_on_line[idx],line_points,indices[idx]) for idx in range(len(indices))])
+
+
+
+# now we need to find the 3d point on the closest line - to calculate the 2d distance
+
+
+        
+    def zscore(self,points):
+        nrml = np.cross(self.right_wing_span,self.right_wing_chord)
+        pts_on_nrml = np.dot(points,nrml)
+        std = np.std(pts_on_nrml)
+        mean = np.mean(pts_on_nrml)
+        return points[((pts_on_nrml - mean)/std) < 1.5]

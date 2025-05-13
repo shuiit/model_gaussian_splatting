@@ -4,10 +4,9 @@ function save_images(sp,save_path, frame_vec)
 frameSize = [800,1280]
 
 for cam = 1:1:4
-    if frame_vec == 0
-        frame_vec = [1:1:length(sp{cam}.frames)];
-    end
-for frame_idx = 1:1:length(frame_vec)
+    if frame_vec == False
+        frame_indices =
+for frame_idx = 1:1:length(sp{cam}.frames)
     frame = frame_vec(frame_idx);
      indim = sp{cam}.frames(frame).indIm;
 

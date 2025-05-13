@@ -92,14 +92,17 @@ def lineToBorderPoints(lines, imageSize):
 
 image_path = 'I:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/'
 dict_path  = 'I:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov1_2023_08_09_60ms/dict/frames_model.pkl'
+dict_path  = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/frames_model_evaluation.pkl'
 
-frame = 370
+frame = 804
 
 
 
 with open(dict_path,'rb') as f:
     frames = pickle.load(f)
 
+mov = frames[frame][-1]['mov_name']
+image_path = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov{mov}_2023_08_09_60ms/'
 frames = [Frame(image_path,frame,cam,frames_dict = frames) for cam in range(4)] 
 
 intrinsic = [frames[cam].K for cam in range(4)]
@@ -127,7 +130,7 @@ im_size = [160,160]
 from IPython.display import display
 width = 2
 for idx in range(4):        
-    axs[idx // width,idx % width].imshow(np.array(frames[idx].im),cmap = 'gray')
+    axs[idx // width,idx % width].imshow(255-np.array(frames[idx].im),cmap = 'gray')
 
 colors = get_n_colors(80)
 plotted_artists = []  # list to store all scatter and line collections
@@ -199,7 +202,7 @@ def on_click(event,dict_cameras, axs, im_size,wing_pixels,list_click):
             
            
 fig.canvas.mpl_connect('button_press_event', lambda event: on_click(event, dict_cameras, axs, im_size,wing_pixels,list_click))
-file_name = 'I:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evalutation/gt_points.pkl'
+file_name = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/gt_points.pkl'
 
 # Show the plot
 plt.show()

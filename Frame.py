@@ -24,7 +24,8 @@ class Frame(Camera):
 
         super().__init__()
         if frames_dict:
-            self.image_id = list(frames_dict[frame][0].keys())[frame_num]
+            images_id_from_dict = [key for key in frames_dict[frame][0].keys() if isinstance(key,int)]
+            self.image_id = images_id_from_dict[frame_num]
             self.load_from_dict(frames_dict,frame,self.image_id,frame_num)  
             frame_rot_trans = frames_dict[frame][0][self.image_id]
             frame_data_and_bb = frames_dict[frame][1][self.image_id]
@@ -53,7 +54,7 @@ class Frame(Camera):
    
         im = scipy.io.loadmat(f'{self.path}images/{self.image_name.split(".jpg")[0]}.mat')['im']
         self.mask = im > 0 
-        bg = np.array((scipy.io.loadmat(f'{self.path}images/bg.mat')['bg']//255).astype(np.uint16))
+        bg = np.array((scipy.io.loadmat(f'{self.path}images/cam{self.camera_number}_bg.mat')['bg']//255).astype(np.uint16))
         white_bg = bg*0 + 255
         image = Image.fromarray(np.array((im * 255).astype(np.uint8)), mode="L")
         return image,white_bg,bg
@@ -90,7 +91,7 @@ class Frame(Camera):
         interest_point = ground_truth[:,:,self.camera_number,self.frame - frame0]
         self.interest_points = crops_tl + np.fliplr(interest_point)  - self.bounding_box[0:2]
 
-    def add_interest_point(self,interest_point,**kwargs):
+    def add_interest_point(self,interest_point):
         self.interest_points = interest_point
 
     def load_and_crop_image(self,delta_xy = 80, **kwargs):
@@ -192,13 +193,14 @@ class Frame(Camera):
 
     
 
-    def save_croped_images(self):
+    def save_croped_images(self, image_name = False):
         image_rgb = self.image.convert('RGB')
         im_np = np.array(image_rgb)
         # idx = np.where(im_np[:,:,0] == 0)
         # im_np[idx[0],idx[1],0] = 255
         image = Image.fromarray(im_np)
-        image.save(f'{self.path}/images/{self.image_name}.jpg', format='JPEG', subsampling=0, quality=100)
+        save_name = self.image_name if image_name == False else image_name
+        image.save(f'{self.path}/images/{save_name}.jpg', format='JPEG', subsampling=0, quality=100)
 
 
     

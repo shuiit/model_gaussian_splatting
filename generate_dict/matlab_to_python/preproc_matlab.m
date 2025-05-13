@@ -4,17 +4,24 @@ close all
 clc
 
 exp = '2023_08_09_60ms'
-path = 'H:\My Drive\dark 2022\2023_08_09_60ms\hull\hull_Reorder\'
 easyWand_name = '10_8_23_allmovs_easyWandData.mat'
+path_frames_mov_eval = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/output_formatted.txt'
 
+frames_for_eval = load(path_frames_mov_eval)
+mov_eval = unique(frames_for_eval(:,11))
 
-movie = 1
+%%
+for idx = 1:1:length(mov_eval)
+
+movie = mov_eval(idx);
+frame_vec = frames_for_eval(frames_for_eval(:,11) == movie,10)
 mov_name = sprintf('mov%d',movie)
 % struct_file_name = sprintf('\\Shull_mov%d',movie)
 % load([path,mov_name,'\hull_op\',struct_file_name])
 
 % hull3d_file_name = sprintf('\\hull3d_mov%d',movie)
 % load([path,mov_name,'\hull_op\',hull3d_file_name])
+path = 'H:\My Drive\dark 2022\2023_08_09_60ms\hull\hull_Reorder\'
 
 load([path,easyWand_name])
 
@@ -30,7 +37,8 @@ for cam = 1:1:4
 
     sparse_file = sprintf('\\mov%d_cam%d_sparse.mat',movie,cam)
     sp{cam} = load([path,mov_name,sparse_file])
-    im_name = [mov_name,'_bg','.mat']
+    cam_name =sprintf('cam%d_',cam)
+    im_name = [cam_name,'bg','.mat']
     bg = sp{cam}.metaData.bg;
     save([save_images_dir,im_name],'bg')
 
@@ -49,10 +57,11 @@ end
 % real_coord(Shull,[save_path,'real_coord.mat'])
 %%
 path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\'
-
+% frame_vec = 0
+% frame_vec =[2471.,  520., 3125., 3055.,  303., 3119.]
 save_path = [path,mov_name,'_',exp,'\','images','\']
 mkdir(save_path)
-save_images(sp,save_path)
+save_images(sp,save_path,frame_vec)
 
 
 %% world axes - from coefs
@@ -89,12 +98,14 @@ pmdlt{j} = [K*R,-K*R*X0];
 end
 plot_camera(rotation,translation,[1,0,0;0,1,0;0,0,1],'standard wand')
 save(save_path,'camera');
-cam = 1
-im = ImfromSp([800,1280],sp{cam}.frames(frame_sparse).indIm);
 
-pt2d = pmdlt{cam}*fly_h';
-pt2d =( pt2d./pt2d(3,:))';
-figure;
-imshow(im2gray(im/255/255));hold on
-scatter(pt2d(:,1),pt2d(:,2),'r.')
+end
+% cam = 1
+% im = ImfromSp([800,1280],sp{cam}.frames(frame_sparse).indIm);
+% 
+% pt2d = pmdlt{cam}*fly_h';
+% pt2d =( pt2d./pt2d(3,:))';
+% figure;
+% imshow(im2gray(im/255/255));hold on
+% scatter(pt2d(:,1),pt2d(:,2),'r.')
 

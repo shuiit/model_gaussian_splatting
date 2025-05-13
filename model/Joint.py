@@ -61,16 +61,16 @@ class Joint:
 
 
 
-
-    def set_local_rotation(self,angles):
+    def set_local_rotation(self,yaw,pitch,roll):
         # angles (z,y,x) (yaw, pitch, roll)
-        self.local_rotation = self.rotation_matrix(angles[0],angles[1],angles[2])
+        self.local_rotation = self.rotation_matrix(yaw,pitch,roll)
         self.local_transformation = self.transformation_matrix()
 
     
-    def set_local_translation(self,translation):
-        self.local_translation = translation
+    def set_local_translation(self,x,y,z):
+        self.local_translation = torch.stack([x,y,z])
         self.local_transformation = self.transformation_matrix()
+        
 
     def set_local_transformation(self):
         self.local_transformation = self.transformation_matrix()
