@@ -47,11 +47,14 @@ class Evaluation(FlyOutput):
         # self.interest_left_wing_boundry = interest_points[wings_idx[idx_right_wing[1]]]
         # self.interest_right_wing_boundry = interest_points[wings_idx[idx_right_wing[0] ]]
 
-        interest_right_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[0]]],self.right_wing_span,self.right_wing_chord)
-        interest_left_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[1]]],self.left_wing_span,self.left_wing_chord)
+        self.interest_right_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[0]]],self.right_wing_span,self.right_wing_chord)
+        self.interest_left_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[1]]],self.left_wing_span,self.left_wing_chord)
 
-        self.interest_right_wing_boundry = self.zscore(interest_right_wing_boundry)
-        self.interest_left_wing_boundry = self.zscore(interest_left_wing_boundry)
+        self.interest_right_wing_boundry = np.vstack((self.interest_right_wing_boundry,self.interest_right_wing_boundry[0]))
+        self.interest_left_wing_boundry = np.vstack((self.interest_left_wing_boundry,self.interest_left_wing_boundry[0]))
+
+        # self.interest_right_wing_boundry = self.zscore(interest_right_wing_boundry)
+        # self.interest_left_wing_boundry = self.zscore(interest_left_wing_boundry)
 
 
 
@@ -83,7 +86,13 @@ class Evaluation(FlyOutput):
     def get_projected_points_on_line(self,points_to_project_on_line,line_points,indices):
         return np.vstack([Utils.project_point_on_line(points_to_project_on_line[idx],line_points,indices[idx]) for idx in range(len(indices))])
 
-
+    def get_projected_and_store(self,frame, source_attr, target_attr, output_attr):
+        source = getattr(frame, source_attr)
+        target = getattr(frame, target_attr)
+        closest_indices = frame.run_all_points_get_closest(source, target)
+        projected = frame.get_projected_points_on_line(source, target, closest_indices)
+        setattr(frame, output_attr, projected)
+        return closest_indices,projected
 
 # now we need to find the 3d point on the closest line - to calculate the 2d distance
 
@@ -95,3 +104,38 @@ class Evaluation(FlyOutput):
         std = np.std(pts_on_nrml)
         mean = np.mean(pts_on_nrml)
         return points[((pts_on_nrml - mean)/std) < 1.5]
+    
+    
+    def calculate_repreojection_error(self,att_to_calc):
+        fitted = np.vstack((getattr(self,att_to_calc[0]),getattr(self, att_to_calc[1])))
+        original = np.vstack((getattr(self, att_to_calc[2]),getattr(self, att_to_calc[3])))
+        bound_on_ew = (self.ew_to_lab.T @ fitted.T ).T
+        interest_to_ew = (self.ew_to_lab.T @ original.T).T
+        projected_interest = [np.fliplr(frame2d.project_with_proj_mat(interest_to_ew)[:,0:2]) for frame2d in self.frames]
+        projected_gs = [np.fliplr(frame2d.project_with_proj_mat(bound_on_ew)[:,0:2]) for frame2d in self.frames]
+        return np.sqrt(np.sum((np.vstack(projected_interest) - np.vstack(projected_gs))**2, axis = 1))
+    
+    def calculate_3d_dist(self,att_to_calc):
+        
+        fitted = np.vstack((getattr(self,att_to_calc[0]),getattr(self, att_to_calc[1])))
+        original = np.vstack((getattr(self, att_to_calc[2]),getattr(self, att_to_calc[3])))
+        return np.sqrt(np.sum((fitted - original)**2, axis = 1))*1000
+
+    
+    def get_all_interest_2d_projection(self):
+        self.projected_interest = np.stack([np.fliplr(frame.project_with_proj_mat(self.interest_points_3d)[:,0:2]) for frame in self.frames])
+        self.projected_gaussians_closest_to_interest = np.stack([frame.project_with_proj_mat(self.gaussian_closest_to_interest_ew)[:,0:2] for frame in self.frames])
+
+        
+    
+        self.dist_from_interest_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points)**2,axis = 2))
+
+
+
+        self.dist_from_interest_point = np.sqrt(np.sum((self.gaussian_closest_to_interest_ew - self.interest_points_3d)**2,axis = 1))
+        self.dist_interest_from_projected = np.sqrt(np.sum((self.projected_interest - self.interest_points)**2,axis = 2))
+
+        self.projected_interest_gaussians = np.stack([frame.project_with_proj_mat(self.gaussian_closest_to_interest_ew)[:,0:2] for frame in self.frames])
+        self.dist_from_gaussians_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points)**2,axis = 2))
+        self.dist_from_gaussians_point = np.sqrt(np.sum((self.interest_points_closest_to_gaussian_ew - self.interest_points_3d)**2,axis = 1))
+

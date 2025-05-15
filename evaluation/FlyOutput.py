@@ -14,7 +14,7 @@ import pickle
 from scipy.signal import savgol_filter
 
 class FlyOutput:
-    def __init__(self,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs):
+    def __init__(self,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,deg = 0,skip_frames = 1,**kwargs, ):
 
         # super().__init__(image_path,frame,cam,**kwargs)
         self.frames = [Frame(image_path,frame,cam,**kwargs) for cam in range(4)] 
@@ -39,7 +39,7 @@ class FlyOutput:
             self.body_ew = self.xyz[self.idx_parts[0],:]
             self.right_wing_ew = self.xyz[self.idx_parts[1],:]
             self.left_wing_ew = self.xyz[self.idx_parts[2],:]
-            self.calc_wing_le_te(num_of_bins = 20,perc_wing_for_le = 1,wing_length_snip = 0.1)
+            self.calc_wing_le_te(letedict['num_of_bins'] ,letedict['perc_wing_for_le'],letedict['wing_length_snip'])
         
         self.opacity = 1 / (1 + np.exp(-vertices["opacity"]))
 
@@ -301,11 +301,12 @@ class FlyOutput:
         wing_origin, r_wing_direction = self.ransac_for_le(wing_le)
         return wing_origin, r_wing_direction,wing_le_full,wing_te_full
 
-    def get_perc_of_bound(self,wing_bound,wing_span, wing_length = 0.1):
+    def get_perc_of_bound(self,wing_bound,wing_all,wing_span, wing_length = 0.1):
 
-        dot_on_le = np.dot(wing_span,wing_bound.T)
+        dot_on_le = np.dot(wing_span,wing_all.T)
         length = (np.max(dot_on_le) - np.min(dot_on_le))
-        return wing_bound[(dot_on_le  - np.min(dot_on_le))> length*wing_length,:]
+        dot_bound = np.dot(wing_span,wing_bound.T)
+        return wing_bound[(dot_bound  - np.min(dot_on_le))> length*wing_length,:]
 
     def run_ransac_and_snip_wing(self, wing_pts,num_of_bins = 20,perc_wing_for_le = 1,wing_length_snip = 0.1):
         wing_span,wing_chord = self.wing_span_chord(wing_pts)
@@ -313,8 +314,8 @@ class FlyOutput:
         
         wing_direction = np.sign(np.dot(wing_span,wing_direction))*wing_direction
         
-        wing_le = self.get_perc_of_bound(wing_le,wing_direction, wing_length = wing_length_snip)
-        wing_te = self.get_perc_of_bound(wing_te,wing_direction, wing_length = wing_length_snip)
+        wing_le = self.get_perc_of_bound(wing_le,wing_pts,wing_direction, wing_length = wing_length_snip)
+        wing_te = self.get_perc_of_bound(wing_te,wing_pts,wing_direction, wing_length = wing_length_snip)
         return wing_origin,wing_direction,wing_chord,wing_le,wing_te
 
 
@@ -332,10 +333,15 @@ class FlyOutput:
 
         self.right_wing_origin,self.right_wing_span,self.right_wing_chord,self.right_wing_le,self.right_wing_te = self.run_ransac_and_snip_wing( self.right_wing,num_of_bins = num_of_bins,perc_wing_for_le = perc_wing_for_le,wing_length_snip = wing_length_snip)
         self.left_wing_origin,self.left_wing_span,self.left_wing_chord,self.left_wing_le,self.left_wing_te = self.run_ransac_and_snip_wing( self.left_wing,num_of_bins = num_of_bins,perc_wing_for_le = perc_wing_for_le,wing_length_snip = wing_length_snip)
-               
-    
-        self.right_wing_boundary = Utils.cyclic_sort(np.vstack((self.right_wing_le,self.right_wing_te)),self.right_wing_span,self.right_wing_chord)
-        self.left_wing_boundary = Utils.cyclic_sort(np.vstack((self.left_wing_le,self.left_wing_te)),self.left_wing_span,self.left_wing_chord)
+        
+        wing_bound_rw = np.unique(np.vstack((self.right_wing_le,self.right_wing_te)),axis = 0)
+        wing_bound_lw = np.unique(np.vstack((self.left_wing_le,self.left_wing_te)), axis = 0)
+
+        wing_bound_rw = self.zscore(wing_bound_rw)
+        wing_bound_lw = self.zscore(wing_bound_lw)
+
+        self.right_wing_boundary = Utils.cyclic_sort(wing_bound_rw,self.right_wing_span,self.right_wing_chord)
+        self.left_wing_boundary = Utils.cyclic_sort(wing_bound_lw,self.left_wing_span,self.left_wing_chord)
 
     # def get_wing_origin(self):
     #      np.dot(self.body,)
