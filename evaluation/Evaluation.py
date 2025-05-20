@@ -6,12 +6,25 @@ import Utils
 import numpy as np
 
 class Evaluation(FlyOutput):
-    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs):
+    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,**kwargs):
         super().__init__(image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs)
         interest_points = self.load_parimiter(interest_points_path)
         [frame.add_interest_point(np.fliplr(np.vstack(interest_point))) for interest_point, frame in zip(interest_points.values(),self.frames)]
         self.triangulate_interest_pixels()
         self.define_wings_interest_points()
+        self.att_to_calc_interest = [
+            "interest_on_bound_rw", "interest_on_bound_lw", "interest_right_wing_boundry","interest_left_wing_boundry",    
+        ]
+
+        self.att_to_calc_bound = [
+            "bound_on_interest_rw", "bound_on_interest_lw", "right_wing_boundary","left_wing_boundary",    
+        ]
+        self.projection_tasks = [
+            ("interest_right_wing_boundry", "right_wing_boundary", "interest_on_bound_rw"),
+            ("interest_left_wing_boundry", "left_wing_boundary", "interest_on_bound_lw"),
+            ("right_wing_boundary", "interest_right_wing_boundry", "bound_on_interest_rw"),
+            ("left_wing_boundary", "interest_left_wing_boundry", "bound_on_interest_lw"),]
+
 
 
     def load_parimiter(self,dict_path):
@@ -33,7 +46,6 @@ class Evaluation(FlyOutput):
         self.rotated_points_3d = (self.ew_to_lab @ np.vstack(self.interest_points_3d).T).T
 
 
-    
     def define_wings_interest_points(self):
         mean_wing = np.mean(self.right_wing,axis = 0)
         interest_points = self.rotated_points_3d
@@ -46,9 +58,25 @@ class Evaluation(FlyOutput):
         idx_right_wing = np.argsort(np.hstack(dist_interest_wing))
         # self.interest_left_wing_boundry = interest_points[wings_idx[idx_right_wing[1]]]
         # self.interest_right_wing_boundry = interest_points[wings_idx[idx_right_wing[0] ]]
+        interest_right = interest_points[wings_idx[idx_right_wing[0]]]
+        point_on_vec_right_bound = np.dot(np.vstack([self.right_wing_le,self.right_wing_le]),self.right_wing_span)
+        point_on_vec_right_interest = np.dot(interest_right,self.right_wing_span)
+        idx_to_keep = np.where((point_on_vec_right_interest > min(point_on_vec_right_bound)) & (point_on_vec_right_interest < max(point_on_vec_right_bound)))
+        point_on_vec_right_interest = interest_right[idx_to_keep[0],:]
 
-        self.interest_right_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[0]]],self.right_wing_span,self.right_wing_chord)
-        self.interest_left_wing_boundry = Utils.cyclic_sort(interest_points[wings_idx[idx_right_wing[1]]],self.left_wing_span,self.left_wing_chord)
+
+        interest_left = interest_points[wings_idx[idx_right_wing[1]]]
+        point_on_vec_left_bound = np.dot(np.vstack([self.left_wing_le,self.left_wing_le]),self.left_wing_span)
+        point_on_vec_left_interest = np.dot(interest_left,self.left_wing_span)
+        idx_to_keep = np.where((point_on_vec_left_interest > min(point_on_vec_left_bound)) & (point_on_vec_left_interest < max(point_on_vec_left_bound)))
+        point_on_vec_left_interest = interest_left[idx_to_keep[0],:]
+
+
+
+        min_max_bound_on_span_left = np.dot(np.vstack([self.left_wing_le,self.left_wing_le]),self.left_wing_span)
+
+        self.interest_right_wing_boundry = Utils.cyclic_sort(point_on_vec_right_interest,self.right_wing_span,self.right_wing_chord)
+        self.interest_left_wing_boundry = Utils.cyclic_sort(point_on_vec_left_interest,self.left_wing_span,self.left_wing_chord)
 
         self.interest_right_wing_boundry = np.vstack((self.interest_right_wing_boundry,self.interest_right_wing_boundry[0]))
         self.interest_left_wing_boundry = np.vstack((self.interest_left_wing_boundry,self.interest_left_wing_boundry[0]))
@@ -139,3 +167,9 @@ class Evaluation(FlyOutput):
         self.dist_from_gaussians_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points)**2,axis = 2))
         self.dist_from_gaussians_point = np.sqrt(np.sum((self.interest_points_closest_to_gaussian_ew - self.interest_points_3d)**2,axis = 1))
 
+    def calculate_error(self):
+        self.error2d_gt_on_boundary_to_gt = self.calculate_repreojection_error(self.att_to_calc_interest) # distance between gt on banudary to baundary
+        self.error3d_gt_on_boundary_to_gt = self.calculate_3d_dist(self.att_to_calc_interest)
+        self.error2d_boundary_on_gt_to_boundary= self.calculate_repreojection_error(self.att_to_calc_bound) # distance between boundary on gt to gt
+        self.error3d_boundary_on_gt_to_boundary = self.calculate_3d_dist(self.att_to_calc_bound)
+        
