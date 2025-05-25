@@ -12,18 +12,16 @@ class Evaluation(FlyOutput):
         [frame.add_interest_point(np.fliplr(np.vstack(interest_point))) for interest_point, frame in zip(interest_points.values(),self.frames)]
         self.triangulate_interest_pixels()
         self.define_wings_interest_points()
-        self.att_to_calc_interest = [
-            "interest_on_bound_rw", "interest_on_bound_lw", "interest_right_wing_boundry","interest_left_wing_boundry",    
-        ]
 
-        self.att_to_calc_bound = [
-            "bound_on_interest_rw", "bound_on_interest_lw", "right_wing_boundary","left_wing_boundary",    
-        ]
         self.projection_tasks = [
-            ("interest_right_wing_boundry", "right_wing_boundary", "interest_on_bound_rw"),
-            ("interest_left_wing_boundry", "left_wing_boundary", "interest_on_bound_lw"),
-            ("right_wing_boundary", "interest_right_wing_boundry", "bound_on_interest_rw"),
-            ("left_wing_boundary", "interest_left_wing_boundry", "bound_on_interest_lw"),]
+            ("right_wing_tagged_le", "right_wing_boundary_le", "interest_on_bound_rw_le"),
+            ("left_wing_tagged_le", "left_wing_boundary_le", "interest_on_bound_lw_le"),
+            ("right_wing_boundary_le", "right_wing_tagged_le", "bound_on_interest_rw_le"),
+            ("left_wing_boundary_le", "left_wing_tagged_le", "bound_on_interest_lw_le"),
+            ("right_wing_tagged_te", "right_wing_boundary_te", "interest_on_bound_rw_te"),
+            ("left_wing_tagged_te", "left_wing_boundary_te", "interest_on_bound_lw_te"),
+            ("right_wing_boundary_te", "right_wing_tagged_te", "bound_on_interest_rw_te"),
+            ("left_wing_boundary_te", "left_wing_tagged_te", "bound_on_interest_lw_te"),]
 
 
 
@@ -46,40 +44,87 @@ class Evaluation(FlyOutput):
         self.rotated_points_3d = (self.ew_to_lab @ np.vstack(self.interest_points_3d).T).T
 
 
+    def trim_tagged_to_wing(self, tagged, boundary, span):
+        point_on_vec_bound = np.dot(boundary,span)
+        point_on_vec_tagged = np.dot(tagged,span)
+        idx_to_keep = np.where((point_on_vec_tagged > min(point_on_vec_bound)) & (point_on_vec_tagged < max(point_on_vec_bound)))
+        return tagged[idx_to_keep[0],:]
+
+
+
+    def reorder_boundary(self,wing_name):
+
+
+        wing_side = wing_name.split('_wing')[0]
+        span = getattr(self,f'{wing_side}_wing_span')
+        chord = getattr(self,f'{wing_side}_wing_chord')
+        points = getattr(self,wing_name)
+
+
+
+        le = getattr(self,f'{wing_side}_wing_le') 
+        
+        
+
+        centered_points =  points - np.mean(points,axis = 0)
+
+        
+        projected_on_chord = np.dot(centered_points,chord)
+        projected_on_span = np.dot(centered_points,span)
+        points_projected = np.column_stack((projected_on_span,projected_on_chord))
+
+        le = points[points_projected[:,1] > 0,:]
+        centered_le = le- np.mean(points,axis = 0)
+        
+        le_projected_on_span = np.dot(centered_le,span)
+        
+        rotationl_idx = Utils.rotational_sort(points_projected,np.mean(points_projected,axis = 0))
+
+        idx_to_roll = points.shape[0]- np.argmin(np.abs(projected_on_span[rotationl_idx] - np.min(le_projected_on_span)))
+
+        points_projected = np.roll(points_projected[rotationl_idx,:],idx_to_roll,axis = 0)
+        points = np.roll(points[rotationl_idx,:],idx_to_roll,axis = 0)
+        
+
+        setattr(self,wing_name,points)
+        le = points[points_projected[:,1] > 0,:]
+        setattr(self,f'{wing_name}_le',le)
+        setattr(self,f'{wing_name}_te',np.vstack((le[-1,:],points[points_projected[:,1] < 0,:])))
+
+
+
     def define_wings_interest_points(self):
         mean_wing = np.mean(self.right_wing,axis = 0)
         interest_points = self.rotated_points_3d
         wings = [interest_points[0:self.interest_point_shape[0],:],interest_points[self.interest_point_shape[0]:,:]]
-
         wings_idx = [list(range(self.interest_point_shape[0])),list(range(self.interest_point_shape[0],interest_points.shape[0]))]
 
         mean_interest = [np.atleast_2d(np.mean(wing,axis = 0)) for wing in wings]
         dist_interest_wing = [Utils.dist_points(mean_wing,mean_interest) for mean_interest in mean_interest]
         idx_right_wing = np.argsort(np.hstack(dist_interest_wing))
+
+    
+        self.all_right_wing_tagged = interest_points[wings_idx[idx_right_wing[0]]]
+        self.all_left_wing_tagged = interest_points[wings_idx[idx_right_wing[1]]]
+
+
+        self.right_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[0]]], np.vstack([self.right_wing_le,self.right_wing_le]), self.right_wing_span)
+        self.left_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[1]]], np.vstack([self.left_wing_le,self.left_wing_le]), self.left_wing_span)
+        
+        
+        [self.reorder_boundary(wing_name) for wing_name in ['right_wing_tagged','left_wing_tagged','right_wing_boundary','left_wing_boundary']]
+        
         # self.interest_left_wing_boundry = interest_points[wings_idx[idx_right_wing[1]]]
         # self.interest_right_wing_boundry = interest_points[wings_idx[idx_right_wing[0] ]]
-        interest_right = interest_points[wings_idx[idx_right_wing[0]]]
-        point_on_vec_right_bound = np.dot(np.vstack([self.right_wing_le,self.right_wing_le]),self.right_wing_span)
-        point_on_vec_right_interest = np.dot(interest_right,self.right_wing_span)
-        idx_to_keep = np.where((point_on_vec_right_interest > min(point_on_vec_right_bound)) & (point_on_vec_right_interest < max(point_on_vec_right_bound)))
-        point_on_vec_right_interest = interest_right[idx_to_keep[0],:]
 
 
-        interest_left = interest_points[wings_idx[idx_right_wing[1]]]
-        point_on_vec_left_bound = np.dot(np.vstack([self.left_wing_le,self.left_wing_le]),self.left_wing_span)
-        point_on_vec_left_interest = np.dot(interest_left,self.left_wing_span)
-        idx_to_keep = np.where((point_on_vec_left_interest > min(point_on_vec_left_bound)) & (point_on_vec_left_interest < max(point_on_vec_left_bound)))
-        point_on_vec_left_interest = interest_left[idx_to_keep[0],:]
+        # min_max_bound_on_span_left = np.dot(np.vstack([self.left_wing_le,self.left_wing_le]),self.left_wing_span)
 
+        # self.interest_right_wing_boundry = Utils.cyclic_sort(point_on_vec_right_interest,self.right_wing_span,self.right_wing_chord)
+        # self.interest_left_wing_boundry = Utils.cyclic_sort(point_on_vec_left_interest,self.left_wing_span,self.left_wing_chord)
 
-
-        min_max_bound_on_span_left = np.dot(np.vstack([self.left_wing_le,self.left_wing_le]),self.left_wing_span)
-
-        self.interest_right_wing_boundry = Utils.cyclic_sort(point_on_vec_right_interest,self.right_wing_span,self.right_wing_chord)
-        self.interest_left_wing_boundry = Utils.cyclic_sort(point_on_vec_left_interest,self.left_wing_span,self.left_wing_chord)
-
-        self.interest_right_wing_boundry = np.vstack((self.interest_right_wing_boundry,self.interest_right_wing_boundry[0]))
-        self.interest_left_wing_boundry = np.vstack((self.interest_left_wing_boundry,self.interest_left_wing_boundry[0]))
+        # self.interest_right_wing_boundry = np.vstack((self.interest_right_wing_boundry,self.interest_right_wing_boundry[0]))
+        # self.interest_left_wing_boundry = np.vstack((self.interest_left_wing_boundry,self.interest_left_wing_boundry[0]))
 
         # self.interest_right_wing_boundry = self.zscore(interest_right_wing_boundry)
         # self.interest_left_wing_boundry = self.zscore(interest_left_wing_boundry)
@@ -91,12 +136,12 @@ class Evaluation(FlyOutput):
         point_to_origin = point - origin # a vector from the point to the lines origin
         line_sq_length = np.dot(line, line) # project the vector from the origin to the point on the line
         t = np.dot(point_to_origin, line) / line_sq_length
-        if 0 <= t <= 1:
-            projection = origin + t * line
-            dist = np.linalg.norm(point - projection)
-            return dist
-        else:
-            return float('inf')
+        # if 0 <= t <= 1:
+        projection = origin + t * line
+        dist = np.linalg.norm(point - projection)
+        return dist
+        # else:
+        #     return float('inf')
         
 
 
@@ -167,9 +212,66 @@ class Evaluation(FlyOutput):
         self.dist_from_gaussians_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points)**2,axis = 2))
         self.dist_from_gaussians_point = np.sqrt(np.sum((self.interest_points_closest_to_gaussian_ew - self.interest_points_3d)**2,axis = 1))
 
-    def calculate_error(self):
-        self.error2d_gt_on_boundary_to_gt = self.calculate_repreojection_error(self.att_to_calc_interest) # distance between gt on banudary to baundary
-        self.error3d_gt_on_boundary_to_gt = self.calculate_3d_dist(self.att_to_calc_interest)
-        self.error2d_boundary_on_gt_to_boundary= self.calculate_repreojection_error(self.att_to_calc_bound) # distance between boundary on gt to gt
-        self.error3d_boundary_on_gt_to_boundary = self.calculate_3d_dist(self.att_to_calc_bound)
+    def calculate_error(self, suffix):
         
+        att_to_calc_tagged = [f"interest_on_bound_rw_{suffix}", f"interest_on_bound_lw_{suffix}", f"right_wing_tagged_{suffix}",f"left_wing_tagged_{suffix}"]
+        att_to_calc_gs = [f'bound_on_interest_rw_{suffix}', f'bound_on_interest_lw_{suffix}', f'right_wing_boundary_{suffix}',f'left_wing_boundary_{suffix}']
+ 
+        error_3d = [self.calculate_3d_dist(tagged_gs) for tagged_gs in [att_to_calc_tagged,att_to_calc_gs]]
+        error_2d = [self.calculate_repreojection_error(tagged_gs) for tagged_gs in [att_to_calc_tagged,att_to_calc_gs]]
+        return error_3d,error_2d
+    
+    def calculate_chamfler(self):
+        self.error_3d_le,self.error_2d_le = self.calculate_error('le')
+        self.error_3d_te,self.error_2d_te = self.calculate_error('te')
+        self.error_3d_chamfer = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))
+        self.error_2d_chamfer = np.mean(np.hstack((self.error_2d_te[0],self.error_2d_le[0]))) + np.mean(np.hstack((self.error_2d_te[1],self.error_2d_le[1])))
+
+
+
+    def calculate_chamfer_dist(self):
+       ( np.mean(self.error2d_gt_on_boundary_to_gt) + np.mean(self.error3d_gt_on_boundary_to_gt))/2
+
+    def homog_and_zbuff(self,points):
+        homo_points = np.column_stack((points,np.ones((points.shape[0],1))))
+        zbuff_ew=[self.frames[cam].z_buffer(homo_points)[0] for cam in range(4)]
+        return np.vstack([np.dot(self.ew_to_lab,zbuff[:,0:3].T).T for zbuff in zbuff_ew])
+
+
+
+    def load_hull_gs_body(self, hull):
+        self.hull_ew = hull
+        # self.zbuff_hull_lab = self.homog_and_zbuff(hull)
+        self.zbuff_body = self.homog_and_zbuff(self.body_ew)
+        self.cm_zbuff_body = np.mean(self.zbuff_body,axis = 0)
+        self.cm_hull_ew = np.mean(self.hull_ew,axis = 0)
+
+    def calculate_chamfler_body(self):
+        self.closest_points_hull_to_body = Utils.find_closest_points_inptclouds(self.hull_ew,self.zbuff_body)
+        self.closest_points_body_to_hull = Utils.find_closest_points_inptclouds(self.zbuff_body,self.hull_ew)
+        errors_3d_1 = np.sqrt(np.sum((self.closest_points_hull_to_body - self.hull_ew)**2,axis = 1))  
+        errors_3d_2 = np.sqrt(np.sum((self.closest_points_body_to_hull - self.zbuff_body)**2,axis = 1))  
+
+        return (np.mean(errors_3d_1) + np.mean(errors_3d_2))*1000
+    
+
+    def calculate_chamfler_body_2d(self):
+        
+        errors_2d_1 = self.calc2d_error_body( self.closest_points_hull_to_body,self.hull_ew)
+        errors_2d_2 = self.calc2d_error_body( self.closest_points_body_to_hull,self.zbuff_body)
+
+        return(np.mean(errors_2d_1) + np.mean(errors_2d_2))
+    
+
+    
+    def calc2d_error_body(self,fitted,original):
+        bound_on_ew = (self.ew_to_lab.T @ fitted.T ).T
+        interest_to_ew = (self.ew_to_lab.T @ original.T).T
+        projected_interest = [np.fliplr(frame2d.project_with_proj_mat(interest_to_ew)[:,0:2]) for frame2d in self.frames]
+        projected_gs = [np.fliplr(frame2d.project_with_proj_mat(bound_on_ew)[:,0:2]) for frame2d in self.frames]
+        diff = np.vstack(projected_interest) - np.vstack(projected_gs)
+        return np.linalg.norm(diff, axis=1)  # Euclidean reprojection error per point
+        # errors_2d_l1 = np.sum(np.abs(diff),axis = 1)  # Euclidean reprojection error per point
+    
+
+

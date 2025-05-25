@@ -40,6 +40,10 @@ class FlyOutput:
             self.right_wing_ew = self.xyz[self.idx_parts[1],:]
             self.left_wing_ew = self.xyz[self.idx_parts[2],:]
             self.calc_wing_le_te(letedict['num_of_bins'] ,letedict['perc_wing_for_le'],letedict['wing_length_snip'])
+            xbody = self.get_principle_axes(self.body)[0]
+            self.xbody = self.get_axis_orientation(xbody,[[0,0,0]],[[0,0,1]])
+            self.xbody,bottom,top,x_ax_points= self.reorient_axis(self.body,xbody)
+
         
         self.opacity = 1 / (1 + np.exp(-vertices["opacity"]))
 

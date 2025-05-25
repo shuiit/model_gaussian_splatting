@@ -172,7 +172,7 @@ class Frame(Camera):
         voxels_sorted_by_z = self.points_in_ew_frame[idx_sorted_by_z,:]
         return voxels_sorted_by_z,pxls[idx_sorted_by_z,:]
 
-    def z_buffer(self,croped_camera_matrix = False):
+    def z_buffer(self,homo_points):
         """
         Compute the z-buffer for 3D points, projecting them onto the 2D image plane.
 
@@ -182,11 +182,11 @@ class Frame(Camera):
         Returns:
             tuple: A tuple containing sorted voxel positions and pixel coordinates.
         """
-        voxels_cam = np.matmul(self.world_to_cam, self.points_in_ew_frame_homo.T).T
-        projected = self.project_on_image(self.points_in_ew_frame_homo,croped_camera_matrix)
+        voxels_cam = np.matmul(self.world_to_cam, homo_points.T).T
+        projected = self.project_on_image(homo_points)
         pxls = np.round(projected) 
         idx_sorted_by_z = voxels_cam[:,2].argsort()
-        voxels_sorted_by_z = self.points_in_ew_frame[idx_sorted_by_z,:]
+        voxels_sorted_by_z = homo_points[idx_sorted_by_z,:]
         [pixels,idx] = np.unique(pxls[idx_sorted_by_z,:], axis=0,return_index=True)
         return voxels_sorted_by_z[idx,:],pixels
     

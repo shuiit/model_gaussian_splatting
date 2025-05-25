@@ -6,6 +6,19 @@ from scipy.spatial import cKDTree
 from math import atan2
 from scipy.signal import savgol_filter
 from scipy.interpolate import splprep, splev
+import scipy.io as sio
+
+
+def find_closest_points_inptclouds(points1,points2):
+    # Two 3D point clouds: points1 (Nx3), points2 (Mx3)
+    tree = cKDTree(points2)
+
+    # For each point in A, find closest in B
+    distances, indices = tree.query(points1)  # distances: (N,), indices: (N,)
+
+    # Closest points from B
+    closest_points = points2[indices]
+    return closest_points
 
 def rotate_vector_direction_and_clip(rotation_matrix, vector_points, scale_vector):
     
@@ -179,6 +192,24 @@ def stack_filter_hist_all_3d(frames_list,top_perc_ol):
     hist_points_3d = np.stack([frame.dist_from_interest_point for frame in frames_list ])
     return np.stack([np.sort(hist_points_3d[:,idx])[0:int(len(hist_points_3d[:,idx]) - top_perc_ol*len(hist_points_3d[:,idx]))] for idx in range(hist_points_3d.shape[1])])
 
+
+def make_body_hull_file(nominal_initial_angles,file_path_save):
+
+
+    hull_body = {}
+
+    for mov_frame in list(nominal_initial_angles.keys())[1:]:
+        mov = int(mov_frame.split('_')[1]) 
+        frame_num = int(mov_frame.split('_')[3]) 
+        hull_path = f'H:/My Drive/dark 2022/2023_08_09_60ms/hull/hull_Reorder/mov{mov}/hull_op/'
+        hull = sio.loadmat(f'{hull_path}/hull3d_mov{mov}')['hull3d']
+        shull = sio.loadmat(f'{hull_path}/Shull_mov{mov}')['Shull']
+        frame_in_hull = np.where(shull['frames'][0][0][0] == frame_num - 1)[0][0]
+        hull_idx = hull['body'][0][0]['body4plot'][0][0][frame_in_hull][0]
+        hull_3d = np.vstack([np.array(shull['real_coord'][0][0][0][frame_in_hull][idx][0])[0][np.array(hull_idx[:,idx])] for idx in range(3)]).T
+        hull_body[mov_frame] = hull_3d
+
+    pickle_file(hull_body,file_path_save)
 
 # def intersection_per_cam(frames_per_cam,cam_num,ptcloud_volume):    
 #     ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)
