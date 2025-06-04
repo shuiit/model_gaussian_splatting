@@ -237,6 +237,15 @@ class Evaluation(FlyOutput):
         zbuff_ew=[self.frames[cam].z_buffer(homo_points)[0] for cam in range(4)]
         return np.vstack([np.dot(self.ew_to_lab,zbuff[:,0:3].T).T for zbuff in zbuff_ew])
 
+    def load_hull_calc_xbody_dot_per_idx(self,zbuff_hull):
+        """load body hull for each index, calculate the dot product of the X axis and the chamfler distance
+
+        Args:
+            zbuff_hull (dict): a dictionary with the body hull in index 0 and the x axis in index 1
+        """
+        self.load_hull_gs_body( zbuff_hull[0])
+        return np.abs(np.dot(self.xbody,zbuff_hull[1]))
+
 
 
     def load_hull_gs_body(self, hull):
@@ -275,3 +284,6 @@ class Evaluation(FlyOutput):
     
 
 
+    def add_z_buff_to_class(self,hull_to_compare):
+        self.zbuff_hull = self.homog_and_zbuff( hull_to_compare) 
+        self.zbuff_model = self.homog_and_zbuff( self.xyz) 

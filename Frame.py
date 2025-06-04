@@ -53,7 +53,8 @@ class Frame(Camera):
     def load_image(self):
    
         im = scipy.io.loadmat(f'{self.path}images/{self.image_name.split(".jpg")[0]}.mat')['im']
-        self.mask = im > 0 
+        self.mask = im > 0 # bee
+        self.mask = im < 170
         bg = np.array((scipy.io.loadmat(f'{self.path}images/cam{self.camera_number}_bg.mat')['bg']//255).astype(np.uint16))
         white_bg = bg*0 + 255
         image = Image.fromarray(np.array((im * 255).astype(np.uint8)), mode="L")

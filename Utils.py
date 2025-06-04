@@ -7,6 +7,7 @@ from math import atan2
 from scipy.signal import savgol_filter
 from scipy.interpolate import splprep, splev
 import scipy.io as sio
+import pandas as pd
 
 
 def find_closest_points_inptclouds(points1,points2):
@@ -210,6 +211,20 @@ def make_body_hull_file(nominal_initial_angles,file_path_save):
         hull_body[mov_frame] = hull_3d
 
     pickle_file(hull_body,file_path_save)
+
+
+def load_body_hull_calc_xbody(frame,hull_mov):
+    # load body ground truth, do z buffer to get only the outside
+    hull = frame.homog_and_zbuff( hull_mov)
+    xbody = frame.get_principle_axes(hull)[0]
+    xbody = frame.get_axis_orientation(xbody,[[0,0,0]],[[0,0,1]])
+    xbody,bottom,top,x_ax_points= frame.reorient_axis(hull,xbody)
+    return [hull, xbody]
+
+def get_camfer_stats(angle_name,delta_angles,chamfer):
+    return pd.DataFrame(data = {f'delta {angle_name}': delta_angles,'mean': np.mean(chamfer,axis = 0) ,'std': np.std(chamfer,axis = 0),
+                   'median':np.median(chamfer,axis = 0),'max':np.max(chamfer,axis = 0),'min':np.min(chamfer,axis = 0)})
+
 
 # def intersection_per_cam(frames_per_cam,cam_num,ptcloud_volume):    
 #     ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)

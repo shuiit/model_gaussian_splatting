@@ -10,7 +10,7 @@ import os
 matplotlib.use('TkAgg')
 plt.ion()
 
-mov_frame = 'mov_36_frame_1031'#'mov_78_frame_3698'
+mov_frame = 'mov_132_frame_2195'#'mov_78_frame_3698'
 mov = int(mov_frame.split('_')[1]) 
 frame = int(mov_frame.split('_')[3]) 
 
@@ -28,7 +28,7 @@ with open(dict_path,'rb') as f:
     frames_dict = pickle.load(f)
 
 
-for wing in ['wing2']:
+for wing in ['wing1','wing2']:
     
     mov = frames_dict[frame][-1]['mov_name']
     image_path = f'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov{mov}_2023_08_09_60ms/'

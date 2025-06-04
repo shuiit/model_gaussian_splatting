@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from plotly.subplots import make_subplots
+import seaborn as sns
 
 
 pio.renderers.default='browser'
@@ -71,4 +72,3 @@ def scatter_projections_from_gs(frames,gs, plot_image = False):
             axs[cam // 2,cam % 2].imshow(frames[image].croped_image,'gray')
             proj[:,1] = 800-proj[:,1]
         axs[cam // 2,cam % 2].scatter(proj[:,0],proj[:,1],s = 1,c = colors)
-

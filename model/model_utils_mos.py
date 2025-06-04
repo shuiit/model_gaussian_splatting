@@ -11,9 +11,9 @@ def initilize_skeleton_and_skin(path_to_mesh,skeleton_scale = 1,skin_scale = 1):
 
     neck = Joint([0.6,0,0.3],[0.0,pitch_body,0],parent = root, end_joint_of_bone = False, scale = skeleton_scale,name = 'neck')
     neck_thorax =  Joint([0.6,0,0.3],[0.0,-25,0], parent = root, end_joint_of_bone = False, scale = skeleton_scale,name = 'neck_thorax')
-    head  =Joint([0.3,0.0,0],[0,0,0.0], parent = neck, scale = skeleton_scale,name = 'head')
+    head  =Joint([1,0.0,0],[0,0,0.0], parent = neck, scale = skeleton_scale,name = 'head')
     thorax  =Joint([-1,0,0.0],[0,25,0.0], parent= neck_thorax ,scale = skeleton_scale,name = 'thorax')
-    abdomen = Joint([-1.3,0,0.0],[0.0,0,0], parent = thorax, scale = skeleton_scale,name = 'abdomen')
+    abdomen = Joint([-2,0,0.0],[0.0,0,0], parent = thorax, scale = skeleton_scale,name = 'abdomen')
 
     right_sp_no_bone = Joint([0,0,0.34],[0.0,pitch_body,0],parent = root, end_joint_of_bone = False , scale = skeleton_scale, color = 'red', rotation_order = 'zxy',name = 'right_sp_no_bone')
     right_wing_root = Joint([0,-0.34,-0.05],[0.0,0,0], parent = right_sp_no_bone, end_joint_of_bone = False, scale = skeleton_scale, color = 'red',rotation_order = 'zxy',name = 'right_wing_root')
@@ -48,9 +48,9 @@ def initilize_skeleton_and_skin(path_to_mesh,skeleton_scale = 1,skin_scale = 1):
     # left_wing = Skin(f'{path_to_mesh}/left_wing_large_thin_y2.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
     
 
-    body = Skin(f'{path_to_mesh}/body_remesh.stl',scale = skin_scale,color = 'lime')
-    right_wing = Skin(f'{path_to_mesh}/right_wing_large_thin_y2.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
-    left_wing = Skin(f'{path_to_mesh}/left_wing_large_thin_y2.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
+    body = Skin(f'{path_to_mesh}/body_mos.stl',scale = skin_scale,color = 'lime')
+    right_wing = Skin(f'{path_to_mesh}/right_wing.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
+    left_wing = Skin(f'{path_to_mesh}/left_wing.stl',scale = skin_scale, constant_weight = left_wing_root,color = 'dodgerblue')
     
     # body = Skin(f'{path_to_mesh}/body_bee_v3.stl',scale = skin_scale,color = 'lime')
     # right_wing = Skin(f'{path_to_mesh}/right_wing_v3.stl',scale = skin_scale,constant_weight = right_wing_root,color = 'crimson')
@@ -81,11 +81,12 @@ def build_skeleton(root,body,right_wing,left_wing,skin_translation = torch.tenso
 def transform_pose(points,weights,root_rotation,list_joints_pitch_update,joint_list,bones,translation,right_wing_angles,
                    left_wing_angles,right_wing_angles_joint1,left_wing_angles_joint1,
                    right_wing_twist_joint1,left_wing_twist_joint1,right_wing_angles_joint2,left_wing_angles_joint2,
-                   right_wing_twist_joint2,left_wing_twist_joint2):
+                   right_wing_twist_joint2,left_wing_twist_joint2, thorax_ang):
     
     joint_list[0].set_local_translation(translation[0],translation[1],translation[2])
     joint_list[0].set_local_rotation(root_rotation[0],root_rotation[1],root_rotation[2])
 
+    joint_list[4].set_local_rotation(torch.tensor(0.0).cuda(),thorax_ang,torch.tensor(0.0).cuda())
 
     [joint.set_local_rotation(root_rotation[0]*0,-root_rotation[1],root_rotation[0]*0) for joint in list_joints_pitch_update]
     # joint_list[6].set_local_translation(right_wing_location,torch.tensor(-0).cuda(),torch.tensor(0.3/1000).cuda(),)

@@ -8,7 +8,8 @@ import matplotlib.cm
 import numpy as np
 import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
-
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 pio.renderers.default='browser'
@@ -187,3 +188,44 @@ def plot_body_hist(width,height,body_points,hist_points,title):
         ax[idx].hist(hist_points[:,:,body_points[idx]].flatten())
         title_str = f'{title[idx]}  mean = {mean:.2f}, std = {std:.2f}' 
         ax[idx].set_title(title_str)
+
+
+
+
+def boxplot(delta_angles,chamfer_3d,angle_name,showfliers = False):
+    
+    
+    n_samples = chamfer_3d.shape[0]
+    # Flatten the data into long-form
+    data_long = {
+        f'delta_{angle_name}': np.repeat(delta_angles, n_samples),
+        'chamfer_dist': chamfer_3d.T.flatten()
+    }
+    df_long = pd.DataFrame(data_long)
+
+
+    # Now plot real boxplots
+    plt.figure(figsize=(10, 5))
+    sns.boxplot(data=df_long, x=f'delta_{angle_name}', y='chamfer_dist', color='lightgray',showfliers=showfliers)
+    sns.stripplot(data=df_long, x=f'delta_{angle_name}', y='chamfer_dist', color='black', size=4, jitter=True)
+
+    plt.ylabel("Chamfer distance [µm]")
+    plt.xlabel(f"delta {angle_name} [°]")
+    plt.title("Chamfer Distance vs Delta Angle")
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_chamfer_frames_th(angle_name,chamfer_dist,chamfer_stats,x):
+
+    chamfer_stats_th = [np.sum(chamfer_dist < th_3d , axis = 0)/np.vstack(chamfer_dist).shape[0]*100 for th_3d in x]
+    plt.figure(),plt.plot(x,np.vstack(chamfer_stats_th))
+    plt.ylabel('frames [%]'), plt.xlabel('Chamfler distance th [mi]')
+    plt.legend(chamfer_stats[f'delta {angle_name}'])
+
+
+
+
+
+
+
