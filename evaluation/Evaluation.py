@@ -224,8 +224,8 @@ class Evaluation(FlyOutput):
     def calculate_chamfler(self):
         self.error_3d_le,self.error_2d_le = self.calculate_error('le')
         self.error_3d_te,self.error_2d_te = self.calculate_error('te')
-        self.error_3d_chamfer = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))
-        self.error_2d_chamfer = np.mean(np.hstack((self.error_2d_te[0],self.error_2d_le[0]))) + np.mean(np.hstack((self.error_2d_te[1],self.error_2d_le[1])))
+        self.error_3d_chamfer_wing = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))
+        self.error_2d_chamfer_wing = np.mean(np.hstack((self.error_2d_te[0],self.error_2d_le[0]))) + np.mean(np.hstack((self.error_2d_te[1],self.error_2d_le[1])))
 
 
 
@@ -244,7 +244,7 @@ class Evaluation(FlyOutput):
             zbuff_hull (dict): a dictionary with the body hull in index 0 and the x axis in index 1
         """
         self.load_hull_gs_body( zbuff_hull[0])
-        return np.abs(np.dot(self.xbody,zbuff_hull[1]))
+        self.hull_xbody_gs = np.abs(np.dot(self.xbody,zbuff_hull[1]))
 
 
 
@@ -260,16 +260,18 @@ class Evaluation(FlyOutput):
         self.closest_points_body_to_hull = Utils.find_closest_points_inptclouds(self.zbuff_body,self.hull_ew)
         errors_3d_1 = np.sqrt(np.sum((self.closest_points_hull_to_body - self.hull_ew)**2,axis = 1))  
         errors_3d_2 = np.sqrt(np.sum((self.closest_points_body_to_hull - self.zbuff_body)**2,axis = 1))  
+        self.error_3d_chamfer_body = (np.mean(errors_3d_1) + np.mean(errors_3d_2))*1000
 
-        return (np.mean(errors_3d_1) + np.mean(errors_3d_2))*1000
+         
     
 
     def calculate_chamfler_body_2d(self):
         
         errors_2d_1 = self.calc2d_error_body( self.closest_points_hull_to_body,self.hull_ew)
         errors_2d_2 = self.calc2d_error_body( self.closest_points_body_to_hull,self.zbuff_body)
+        self.error_2d_chamfer_body = (np.mean(errors_2d_1) + np.mean(errors_2d_2))
 
-        return(np.mean(errors_2d_1) + np.mean(errors_2d_2))
+        
     
 
     
@@ -287,3 +289,4 @@ class Evaluation(FlyOutput):
     def add_z_buff_to_class(self,hull_to_compare):
         self.zbuff_hull = self.homog_and_zbuff( hull_to_compare) 
         self.zbuff_model = self.homog_and_zbuff( self.xyz) 
+        
