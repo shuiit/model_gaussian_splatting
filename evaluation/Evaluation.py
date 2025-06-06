@@ -6,12 +6,13 @@ import Utils
 import numpy as np
 
 class Evaluation(FlyOutput):
-    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,**kwargs):
-        super().__init__(image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,**kwargs)
+    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,**kwargs):
+        super().__init__(image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,letedict = letedict,**kwargs)
         interest_points = self.load_parimiter(interest_points_path)
         [frame.add_interest_point(np.fliplr(np.vstack(interest_point))) for interest_point, frame in zip(interest_points.values(),self.frames)]
         self.triangulate_interest_pixels()
         self.define_wings_interest_points()
+        self.letedict = letedict
 
         self.projection_tasks = [
             ("right_wing_tagged_le", "right_wing_boundary_le", "interest_on_bound_rw_le"),
@@ -47,7 +48,7 @@ class Evaluation(FlyOutput):
     def trim_tagged_to_wing(self, tagged, boundary, span):
         point_on_vec_bound = np.dot(boundary,span)
         point_on_vec_tagged = np.dot(tagged,span)
-        idx_to_keep = np.where((point_on_vec_tagged > min(point_on_vec_bound)) & (point_on_vec_tagged < max(point_on_vec_bound)))
+        idx_to_keep = np.where((point_on_vec_tagged > min(point_on_vec_tagged)) & (point_on_vec_tagged < max(point_on_vec_bound)))
         return tagged[idx_to_keep[0],:]
 
 
@@ -56,8 +57,9 @@ class Evaluation(FlyOutput):
 
 
         wing_side = wing_name.split('_wing')[0]
-        span = getattr(self,f'{wing_side}_wing_span')
-        chord = getattr(self,f'{wing_side}_wing_chord')
+        span = getattr(self,f'{wing_side}_gt_wing_span')
+        chord = getattr(self,f'{wing_side}_gt_wing_chord')
+
         points = getattr(self,wing_name)
 
 
@@ -83,13 +85,13 @@ class Evaluation(FlyOutput):
         idx_to_roll = points.shape[0]- np.argmin(np.abs(projected_on_span[rotationl_idx] - np.min(le_projected_on_span)))
 
         points_projected = np.roll(points_projected[rotationl_idx,:],idx_to_roll,axis = 0)
-        points = np.roll(points[rotationl_idx,:],idx_to_roll,axis = 0)
+        return np.roll(points[rotationl_idx,:],idx_to_roll,axis = 0)
         
 
-        setattr(self,wing_name,points)
-        le = points[points_projected[:,1] > 0,:]
-        setattr(self,f'{wing_name}_le',le)
-        setattr(self,f'{wing_name}_te',np.vstack((le[-1,:],points[points_projected[:,1] < 0,:])))
+        # setattr(self,wing_name,points)
+        # le = points[points_projected[:,1] > 0,:]
+        # setattr(self,f'{wing_name}_le',le)
+        # setattr(self,f'{wing_name}_te',np.vstack((le[-1,:],points[points_projected[:,1] < 0,:])))
 
 
 
@@ -104,15 +106,43 @@ class Evaluation(FlyOutput):
         idx_right_wing = np.argsort(np.hstack(dist_interest_wing))
 
     
-        self.all_right_wing_tagged = interest_points[wings_idx[idx_right_wing[0]]]
-        self.all_left_wing_tagged = interest_points[wings_idx[idx_right_wing[1]]]
+        self.right_wing_tagged = interest_points[wings_idx[idx_right_wing[0]]]
+        self.left_wing_tagged = interest_points[wings_idx[idx_right_wing[1]]]
+
+        right_gt_wing_span_chord = self.wing_span_chord(self.right_wing_tagged)
+        left_gt_wing_span_chord = self.wing_span_chord(self.left_wing_tagged)
 
 
-        self.right_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[0]]], np.vstack([self.right_wing_le,self.right_wing_le]), self.right_wing_span)
-        self.left_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[1]]], np.vstack([self.left_wing_le,self.left_wing_le]), self.left_wing_span)
+
+
+        self.right_gt_wing_span = right_gt_wing_span_chord[0]
+        self.right_gt_wing_chord = right_gt_wing_span_chord[1]
+
+        self.left_gt_wing_span = left_gt_wing_span_chord[0]
+        self.left_gt_wing_chord = left_gt_wing_span_chord[1]
+
+        # self.right_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[0]]], np.vstack([self.right_wing_le,self.right_wing_le]), gt_span_right[0])
+        # self.left_wing_tagged = self.trim_tagged_to_wing(interest_points[wings_idx[idx_right_wing[1]]], np.vstack([self.left_wing_le,self.left_wing_le]), gt_span_left[1])
         
         
-        [self.reorder_boundary(wing_name) for wing_name in ['right_wing_tagged','left_wing_tagged','right_wing_boundary','left_wing_boundary']]
+        # self.right_wing_boundary = self.trim_tagged_to_wing(self.right_wing_boundary,interest_points[wings_idx[idx_right_wing[0]]], gt_span_right[0])
+        # self.left_wing_boundary = self.trim_tagged_to_wing(self.left_wing_boundary,interest_points[wings_idx[idx_right_wing[1]]], gt_span_left[1])
+        
+
+        for wing_name in ['right_wing_tagged','left_wing_tagged','right_wing_boundary','left_wing_boundary']:
+            reordered = self.reorder_boundary(wing_name)
+            span = getattr(self,f'{wing_name.split("_wing")[0]}_gt_wing_span')
+            chord = getattr(self,f'{wing_name.split("_wing")[0]}_gt_wing_chord')
+
+            le = reordered[0:reordered.shape[0]//2,:]
+            te = reordered[reordered.shape[0]//2:,:]
+            setattr(self,f'{wing_name}',reordered)
+
+            setattr(self,f'{wing_name}_le',le)
+            setattr(self,f'{wing_name}_te',te)
+
+
+
         
         # self.interest_left_wing_boundry = interest_points[wings_idx[idx_right_wing[1]]]
         # self.interest_right_wing_boundry = interest_points[wings_idx[idx_right_wing[0] ]]
@@ -224,13 +254,14 @@ class Evaluation(FlyOutput):
     def calculate_chamfler(self):
         self.error_3d_le,self.error_2d_le = self.calculate_error('le')
         self.error_3d_te,self.error_2d_te = self.calculate_error('te')
-        self.error_3d_chamfer_wing = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))
+
+        self.error_3d_chamfer_wing = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))*1000
         self.error_2d_chamfer_wing = np.mean(np.hstack((self.error_2d_te[0],self.error_2d_le[0]))) + np.mean(np.hstack((self.error_2d_te[1],self.error_2d_le[1])))
 
 
 
-    def calculate_chamfer_dist(self):
-       ( np.mean(self.error2d_gt_on_boundary_to_gt) + np.mean(self.error3d_gt_on_boundary_to_gt))/2
+    # def calculate_chamfer_dist(self):
+    #    ( np.mean(self.error2d_gt_on_boundary_to_gt) + np.mean(self.error3d_gt_on_boundary_to_gt))/2
 
     def homog_and_zbuff(self,points):
         homo_points = np.column_stack((points,np.ones((points.shape[0],1))))
@@ -260,7 +291,7 @@ class Evaluation(FlyOutput):
         self.closest_points_body_to_hull = Utils.find_closest_points_inptclouds(self.zbuff_body,self.hull_ew)
         errors_3d_1 = np.sqrt(np.sum((self.closest_points_hull_to_body - self.hull_ew)**2,axis = 1))  
         errors_3d_2 = np.sqrt(np.sum((self.closest_points_body_to_hull - self.zbuff_body)**2,axis = 1))  
-        self.error_3d_chamfer_body = (np.mean(errors_3d_1) + np.mean(errors_3d_2))*1000
+        self.error_3d_chamfer_body = (np.mean(errors_3d_1*1000*1000) + np.mean(errors_3d_2*1000*1000))
 
          
     

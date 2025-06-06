@@ -7,10 +7,13 @@ import Utils
 from FlyOutput import FlyOutput
 import numpy as np
 class EvaluateAngleSweep():
-    def __init__(self,frames,nominal_initial_angles,input_dir,input_path_for_image,iterations,path_frame,angle_name,delta_angles =  np.array([  0., -40., -30., -20., -10.,  10.,  20.,  30.,  40.])):
+    def __init__(self,frames,nominal_initial_angles,input_dir,input_path_for_image,iterations,path_frame,angle_name,delta_angles =  np.array([  0., -30., -20., -10.,  10.,  20.,  30.])):
 
-
+        self.delta_angles = delta_angles
         self.zbuff_hull,self.zbuff_model = {},{}
+        res_dir = os.listdir(f'{input_dir}/results') 
+        self.results_dir = [mov_name for res_dir,mov_name in zip(res_dir, nominal_initial_angles) if len(os.listdir(f'{input_dir}/results/{res_dir}')) == len(self.delta_angles)]
+
         self.wing_hull,self.wing_model = {'right':{},'left':{}},{'right':{},'left':{}}
         self.input_dir = input_dir
         self.iterations = iterations
@@ -22,7 +25,6 @@ class EvaluateAngleSweep():
         self.frames = frames
         self.nominal_initial_angles = nominal_initial_angles
         self.angle_name = angle_name
-        self.delta_angles = delta_angles
 
     def open_file(self,path,ang_dict = {}):
         with open(path,'rb') as f:
@@ -52,16 +54,19 @@ class EvaluateAngleSweep():
     def load_all_sweep(self,letedict):
         # generate frames file if it doesnt exist
         self.sweep = {}
-        for mov_name in tqdm(list(self.nominal_initial_angles.keys())):
-            try:
-                self.sweep[mov_name] = [self.load_frame_all_sweep(idx_iter,mov_name,self.iterations,letedict,self.frames) for idx_iter in range(self.sweep_size)]   
-            except:
-                continue
+        for mov_name in tqdm(self.results_dir):
+            self.sweep[mov_name] = []
+            for idx_iter in range(self.sweep_size):
+                try:
+                
+                    self.sweep[mov_name].append(self.load_frame_all_sweep(idx_iter,mov_name,self.iterations,letedict,self.frames))
+                except:
+                    self.sweep[mov_name].append('Fail')
 
 
     def calculate_wing_chamfer(self):
         for mov_name in tqdm(list(self.sweep.keys())):
-                [frame.calculate_chamfler() for frame in self.sweep[mov_name]]  
+                [frame.calculate_chamfler() for frame in self.sweep[mov_name] if frame != 'Fail']  
 
 
     def hull_calc_zbuff_hull_xbody(self,file_path_save_hull):
@@ -75,9 +80,9 @@ class EvaluateAngleSweep():
         self.zbuff_hull,self.zbuff_model = {},{}
         for mov_name in tqdm(list(self.sweep.keys())):
             zbuff_hull = Utils.load_body_hull_calc_xbody(self.sweep[mov_name][0], hull_movs[mov_name]) 
-            [frame.load_hull_calc_xbody_dot_per_idx(zbuff_hull) for frame in self.sweep[mov_name]]
-            [frame.calculate_chamfler_body() for frame in self.sweep[mov_name]]
-            [frame.calculate_chamfler_body_2d() for frame in self.sweep[mov_name]]
+            [frame.load_hull_calc_xbody_dot_per_idx(zbuff_hull) for frame in self.sweep[mov_name] if frame != 'Fail']
+            [frame.calculate_chamfler_body() for frame in self.sweep[mov_name] if frame != 'Fail']
+            [frame.calculate_chamfler_body_2d() for frame in self.sweep[mov_name] if frame != 'Fail']
 
 
 
@@ -148,8 +153,8 @@ class EvaluateAngleSweep():
     
 
     def find_wings_hull(self,mov_name,side_wing):
-        getattr(self.sweep[mov_name][0],f'all_{side_wing}_wing_tagged')
-        gt_wing = np.vstack((self.sweep[mov_name][0].all_right_wing_tagged))
+        wing_gt = getattr(self.sweep[mov_name][0],f'{side_wing}_wing_tagged')
+        gt_wing = np.vstack((wing_gt))
         gt_body = np.vstack((self.sweep[mov_name][0].hull_ew))
 
         wing_hull,body_hull = self.get_wing_body_from_hull(self.zbuff_hull[mov_name],gt_body,gt_wing)
@@ -206,18 +211,10 @@ class EvaluateAngleSweep():
         model_wings_project_z = np.hstack((self.project_on_z(wing_model_parts_right,mov_name),self.project_on_z(wing_model_parts_left,mov_name)))
         return np.std(hull_wings_project_z*1000),np.std(model_wings_project_z*1000)
     
-
-    def get_all_camfer(self):
-        self.chamfer_2d_wing = np.vstack([[frame.error_2d_chamfer_wing for frame in self.sweep[mov_name]] for mov_name in list(self.sweep.keys())]) /2
-        self.chamfer_stats_2d_wing = Utils.get_camfer_stats(self.angle_name,self.delta_angles,self.chamfer_2d_wing)
-
-        self.chamfer_3d_wing = np.vstack([[frame.error_3d_chamfer_wing for frame in self.sweep[mov_name]] for mov_name in list(self.sweep.keys())])*1000/2
-        self.chamfer_stats_3d_wing = Utils.get_camfer_stats(self.angle_name,self.delta_angles,self.chamfer_3d_wing)
-
-        self.chamfer_3d_body = np.vstack([[frame.error_3d_chamfer_body for frame in self.sweep[mov_name]] for mov_name in tqdm(list(self.sweep.keys()))])
-        self.chamfer_stats_3d_body = Utils.get_camfer_stats(self.angle_name,self.delta_angles,self.chamfer_3d_body)
-
-        self.chamfer_2d_body = np.vstack([[frame.error_2d_chamfer_body for frame in self.sweep[mov_name]] for mov_name in tqdm(list(self.sweep.keys()))])
-        self.chamfer_stats_2d_body = Utils.get_camfer_stats(self.angle_name,self.delta_angles,self.chamfer_2d_body)
+    def get_chamfer(self):
+        for mov_name in tqdm(list(self.sweep.keys())):
+            [frame.calculate_chamfler() for frame in self.sweep[mov_name] if frame != 'Fail']
+            
+                
 
 
