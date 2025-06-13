@@ -7,7 +7,7 @@ from math import atan2
 from scipy.signal import savgol_filter
 from scipy.interpolate import splprep, splev
 import scipy.io as sio
-import pandas as pd
+# import pandas as pd
 
 
 def find_closest_points_inptclouds(points1,points2):
@@ -20,6 +20,19 @@ def find_closest_points_inptclouds(points1,points2):
     # Closest points from B
     closest_points = points2[indices]
     return closest_points
+
+
+def find_closest_points_inptclouds_radius(points1,points2, radius):
+    # Two 3D point clouds: points1 (Nx3), points2 (Mx3)
+    tree = cKDTree(points2)
+
+    # For each point in A, find closest in B
+    indices_list = tree.query_ball_point(points1 ,r=radius)  # distances: (N,), indices: (N,)
+    closest_points_list = [points2[indices] for indices in indices_list]
+    # Closest points from B
+    # closest_points = points2[closest_points_list]
+    return np.vstack(closest_points_list)
+
 
 def rotate_vector_direction_and_clip(rotation_matrix, vector_points, scale_vector):
     
@@ -221,10 +234,22 @@ def load_body_hull_calc_xbody(frame,hull_mov):
     xbody,bottom,top,x_ax_points= frame.reorient_axis(hull,xbody)
     return [hull, xbody]
 
-def get_camfer_stats(angle_name,delta_angles,chamfer):
-    return pd.DataFrame(data = {f'delta {angle_name}': delta_angles,'mean': np.mean(chamfer,axis = 0) ,'std': np.std(chamfer,axis = 0),
-                   'median':np.median(chamfer,axis = 0),'max':np.max(chamfer,axis = 0),'min':np.min(chamfer,axis = 0)})
+def get_chamfer_stats(angle_name, delta_angles, chamfer):
+    # Create DataFrame from chamfer list, letting pandas handle None as NaN
+    chamfer_df = pd.DataFrame(chamfer)
+    
+    # Compute statistics ignoring NaN values
+    stats = pd.DataFrame({
+        f'delta {angle_name}': delta_angles,
+        'mean': chamfer_df.mean(skipna=True, axis=0),
+        'std': chamfer_df.std(skipna=True, axis=0),
+        'median': chamfer_df.median(skipna=True, axis=0),
+        'max': chamfer_df.max(skipna=True, axis=0),
+        'min': chamfer_df.min(skipna=True, axis=0),
+        'count_none': chamfer_df.isna().sum(axis=0)
+    })
 
+    return stats
 
 # def intersection_per_cam(frames_per_cam,cam_num,ptcloud_volume):    
 #     ptsv = frames_per_cam[cam_num].homogenize_coordinate(ptcloud_volume)

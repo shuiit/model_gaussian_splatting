@@ -6,9 +6,12 @@ from tqdm import tqdm
 import Utils
 from FlyOutput import FlyOutput
 import numpy as np
+import pandas as pd
 class EvaluateAngleSweep():
-    def __init__(self,frames,nominal_initial_angles,input_dir,input_path_for_image,iterations,path_frame,angle_name,delta_angles =  np.array([  0., -30., -20., -10.,  10.,  20.,  30.])):
+    def __init__(self,frames,nominal_initial_angles,input_dir,input_path_for_image,iterations,path_frame,angle_name,model_name,delta_angles =  np.array([  0., -30., -20., -10.,  10.,  20.,  30.])):
 
+        
+        self.model_name = model_name
         self.delta_angles = delta_angles
         self.zbuff_hull,self.zbuff_model = {},{}
         res_dir = os.listdir(f'{input_dir}/results') 
@@ -58,7 +61,6 @@ class EvaluateAngleSweep():
             self.sweep[mov_name] = []
             for idx_iter in range(self.sweep_size):
                 try:
-                
                     self.sweep[mov_name].append(self.load_frame_all_sweep(idx_iter,mov_name,self.iterations,letedict,self.frames))
                 except:
                     self.sweep[mov_name].append('Fail')
@@ -66,7 +68,7 @@ class EvaluateAngleSweep():
 
     def calculate_wing_chamfer(self):
         for mov_name in tqdm(list(self.sweep.keys())):
-                [frame.calculate_chamfler() for frame in self.sweep[mov_name] if frame != 'Fail']  
+                [frame.calculate_chamfler(self.model_name) for frame in self.sweep[mov_name] if frame != 'Fail']  
 
 
     def hull_calc_zbuff_hull_xbody(self,file_path_save_hull):
@@ -217,4 +219,28 @@ class EvaluateAngleSweep():
             
                 
 
+
+    
+    def load_1d_chamfer_nominal_to_df(self,xname,model,plot_body_wing = 'wing'):
+            path = os.path.dirname(self.input_dir)
+            with open(f'{path}/{model}/chamfer.pkl', 'rb') as f: 
+                chamfer_body = pickle.load(f)
+            data_long = {f'xtick': np.repeat(xname, len(chamfer_body[plot_body_wing][0][:,0])),'chamfer_dist': chamfer_body[plot_body_wing][0][:,0]}
+            return pd.DataFrame(data_long)
+
+
+    
+    
+    def generate_dflong_chamfer(self,xname,model,plot_body_wing = 'wing'):
+        path = os.path.dirname(self.input_dir)
+        with open(f'{path}/{model}/chamfer.pkl', 'rb') as f: 
+                chamfer = pickle.load(f)
+        chamfer_df = pd.DataFrame(chamfer[plot_body_wing][0])
+        chamfer_3d = chamfer_df.fillna(np.nan).to_numpy()
+            # Flatten data for seaborn
+        data_long = {
+            f'xtick': np.repeat(xname, chamfer_3d.shape[0]),
+            'chamfer_dist': chamfer_3d.T.flatten()
+        }
+        return pd.DataFrame(data_long)
 

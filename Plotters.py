@@ -11,7 +11,8 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import matplotlib.cm as cm
+import pickle
 pio.renderers.default='browser'
 
 # -*- coding: utf-8 -*-
@@ -190,39 +191,238 @@ def plot_body_hist(width,height,body_points,hist_points,title):
         ax[idx].set_title(title_str)
 
 
-
-
-def boxplot(delta_angles,chamfer_3d,angle_name,showfliers = False):
-    
-    
+def boxplot2(delta_angles, chamfer_3d, angle_name,ax, showfliers=False,cmap_name = 'viridis', xdata = False,**kwargs):
     n_samples = chamfer_3d.shape[0]
-    # Flatten the data into long-form
+
+    # Flatten data for seaborn
     data_long = {
         f'delta_{angle_name}': np.repeat(delta_angles, n_samples),
         'chamfer_dist': chamfer_3d.T.flatten()
     }
     df_long = pd.DataFrame(data_long)
 
+    # Get unique sorted delta values
+    unique_deltas = np.sort(np.unique(delta_angles))
 
-    # Now plot real boxplots
-    plt.figure(figsize=(10, 5))
-    sns.boxplot(data=df_long, x=f'delta_{angle_name}', y='chamfer_dist', color='lightgray',showfliers=showfliers)
-    sns.stripplot(data=df_long, x=f'delta_{angle_name}', y='chamfer_dist', color='black', size=4, jitter=True)
+    # Create gradient color list from colormap
+    cmap = cm.get_cmap(cmap_name)  # You can change to 'plasma', 'Blues', etc.
+    colors = [cmap(i) for i in np.linspace(0.3, 1, len(unique_deltas))]
 
-    plt.ylabel("Chamfer distance [µm]")
-    plt.xlabel(f"delta {angle_name} [°]")
-    plt.title("Chamfer Distance vs Delta Angle")
-    plt.tight_layout()
-    plt.show()
+    # Create a mapping from delta value to color
+    palette = {delta: color for delta, color in zip(unique_deltas, colors)}
+
+    # Plot
+
+    xdata = f'delta_{angle_name}' if xdata == False else xdata
+
+    sns.boxplot(
+        data=df_long,
+        x=xdata,
+        y='chamfer_dist',
+        palette=palette,
+        showfliers=showfliers,
+        ax = ax,**kwargs
+    )
+    # sns.stripplot(
+    #     data=df_long,
+    #     x=xdata,
+    #     y='chamfer_dist',
+    #     color='black',
+    #     size=4,
+    #     jitter=True,
+    #     ax = ax
+    # )
 
 
-def plot_chamfer_frames_th(angle_name,chamfer_dist,chamfer_stats,x):
 
-    chamfer_stats_th = [np.sum(chamfer_dist < th_3d , axis = 0)/np.vstack(chamfer_dist).shape[0]*100 for th_3d in x]
-    plt.figure(),plt.plot(x,np.vstack(chamfer_stats_th))
-    plt.ylabel('frames [%]'), plt.xlabel('Chamfler distance th [mi]')
-    plt.legend(chamfer_stats[f'delta {angle_name}'])
+def boxplot(delta_angles, chamfer_3d, angle_name,ax, showfliers=False,cmap_name = 'viridis'):
+    n_samples = chamfer_3d.shape[0]
 
+    # Flatten data for seaborn
+    data_long = {
+        f'delta_{angle_name}': np.repeat(delta_angles, n_samples),
+        'chamfer_dist': chamfer_3d.T.flatten()
+    }
+    df_long = pd.DataFrame(data_long)
+
+    # Get unique sorted delta values
+    unique_deltas = np.sort(np.unique(delta_angles))
+
+    # Create gradient color list from colormap
+    cmap = cm.get_cmap(cmap_name)  # You can change to 'plasma', 'Blues', etc.
+    colors = [cmap(i) for i in np.linspace(0.3, 1, len(unique_deltas))]
+
+    # Create a mapping from delta value to color
+    palette = {delta: color for delta, color in zip(unique_deltas, colors)}
+
+    # Plot
+
+
+    sns.boxplot(
+        data=df_long,
+        x=xdata,
+        y='chamfer_dist',
+        palette=palette,
+        showfliers=showfliers,
+        ax = ax
+    )
+    sns.stripplot(
+        data=df_long,
+        x=xdata,
+        y='chamfer_dist',
+        color='black',
+        size=4,
+        jitter=True,
+        ax = ax
+    )
+
+
+
+def boxplot_v2(df_long, data_for_colors, xtick, ax, showfliers=False,cmap_name = 'viridis',**kwargs):
+   
+    # Create gradient color list from colormap
+    cmap = cm.get_cmap(cmap_name)  # You can change to 'plasma', 'Blues', etc.
+    colors = [cmap(i) for i in np.linspace(0.3, 1, len(data_for_colors))]
+
+    # Create a mapping from delta value to color
+    palette = {delta: color for delta, color in zip(data_for_colors, colors)}
+
+    # Plot
+
+
+    sns.boxplot(
+        data=df_long,
+        x=xtick,
+        y='chamfer_dist',
+        palette=palette,
+        showfliers=showfliers,
+        ax = ax,**kwargs
+    )
+    sns.stripplot(
+        data=df_long,
+        x=xtick,
+        y='chamfer_dist',
+        color='black',
+        size=4,
+        jitter=True,
+        ax = ax
+    )
+
+
+    
+
+def plot_chamfer_frames_th(angle_name,chamfer_dist,chamfer_stats,x,colors,ax):
+    sort_lines = np.argsort(chamfer_stats[f'delta {angle_name}'].to_numpy())
+    chamfer_dist = chamfer_dist[:,sort_lines]
+    chamfer_stats = chamfer_stats.iloc[sort_lines]
+
+    chamfer_stats_th = [
+        np.sum(chamfer_dist < th_3d, axis=0) / np.vstack(chamfer_dist).shape[0] * 100 
+        for th_3d in x
+    ]
+    chamfer_stats_th = np.vstack(chamfer_stats_th)  # shape: (len(x), num_angles)
+    
+    num_lines = chamfer_stats_th.shape[1]
+    
+
+
+
+    for i in range(num_lines):
+        ax.plot(x.astype(np.int16), chamfer_stats_th[:, i], color=colors[i], label=chamfer_stats[f'delta {angle_name}'].iloc[i])
+    
+    ax.set_ylabel('Frames [%]')
+    ax.set_xlabel('CD threshold [μm]')
+    ax.set_ylim(0)
+    ax.set_xlim(0,x.max()*1.05)
+    ax.legend(title=f'$\delta ^\circ $')
+
+
+
+def wing_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yticks, cmap = 'turbo',**kwargs ):
+    camfer = {}
+    angle = ['phi','theta','psi']
+    for idx,angle in enumerate(angle):
+        wing_side = ['right', 'left']
+        for wing_side in wing_side:
+            phi_names = f'fly_{angle}_{wing_side}_delta10_sweep_m40_40_try'
+            with open(f'{path_output}/{phi_names}/chamfer.pkl', 'rb') as f: 
+                camfer[wing_side] = pickle.load(f)
+        wings_phi_chamfer = np.vstack((camfer['right'][plot_body_wing][0],camfer['left'][plot_body_wing][0]))
+        chamfer_df = pd.DataFrame(wings_phi_chamfer)
+        
+
+        boxplot2(delta_angles.astype(np.int16),chamfer_df.fillna(np.nan).to_numpy(),angle_name,ax[idx],showfliers = False, cmap_name=cmap,**kwargs)
+
+        ax[idx].set(xlabel=None)
+        if idx != 0:
+            ax[idx].set(ylabel=None)
+        ax[idx].set_yticks(yticks)
+        ax[idx].set_ylim([min(yticks),max(yticks)])
+        ax[idx].set_title(f"$\{angle}$")
+            # Labeling the axis directly
+        ax[idx].set_ylabel("CD [µm]")
+        xlabel = f"$\delta ^\circ ${angle_name}"
+        ax[idx].set_xlabel(xlabel.capitalize())
+
+def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yticks, cmap = 'turbo' ):
+
+    angle = ['yaw','pitch','roll']
+    for idx,angle in enumerate(angle):
+        body_names = f'fly_{angle}_delta10_sweep_m40_40_try'
+        with open(f'{path_output}/{body_names}/chamfer.pkl', 'rb') as f: 
+            chamfer_body = pickle.load(f)
+        chamfer_df = pd.DataFrame(chamfer_body[plot_body_wing][0])
+        boxplot2(delta_angles.astype(np.int16),chamfer_df.fillna(np.nan).to_numpy(),angle_name,ax[idx],showfliers = False, cmap_name=cmap)
+        if idx != 0:
+            ax[idx].set(ylabel=None)
+        ax[idx].set_yticks(yticks)
+        ax[idx].set_ylim([min(yticks),max(yticks)])
+        # ax[idx].set_title(angle)
+        ax[idx].set_ylabel("CD [µm]")
+        xlabel = f"$\delta ^\circ ${angle_name}"
+
+        ax[idx].set_xlabel(xlabel.capitalize())
+
+
+def wing_subplot_th(path_output,plot_body_wing,ax,colors):
+
+    camfer = {}
+    angle = ['phi','theta','psi']
+    for idx,angle in enumerate(angle):
+        wing_side = ['right', 'left']
+        for wing_side in wing_side:
+            phi_names = f'fly_{angle}_{wing_side}_delta10_sweep_m40_40_try'
+            with open(f'{path_output}/{phi_names}/chamfer.pkl', 'rb') as f: 
+                camfer[wing_side] = pickle.load(f)
+        wings_phi_chamfer = np.vstack((camfer['right'][plot_body_wing][0],camfer['left'][plot_body_wing][0]))
+        chamfer_df = pd.DataFrame(wings_phi_chamfer)
+        stats3d = camfer[wing_side][plot_body_wing][2]
+        plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
+        ax[idx].set(xlabel=None)
+        # 
+        if idx != 0:
+            ax[idx].get_legend().remove()
+            ax[idx].set(ylabel=None)
+        if idx == 0:
+            ax[idx].legend(title='$\Delta$ angle',
+                title_fontsize='x-small',
+                )
+        ax[idx].set_title(f"$\{angle}$")
+
+
+def body_subplot_th(path_output,plot_body_wing,ax,colors):
+    angle = ['yaw','pitch','roll']
+    for idx,angle in enumerate(angle):
+        body_names = f'fly_{angle}_delta10_sweep_m40_40_try'
+        with open(f'{path_output}/{body_names}/chamfer.pkl', 'rb') as f: 
+            chamfer_body = pickle.load(f)
+        chamfer_df = pd.DataFrame(chamfer_body[plot_body_wing][0])
+        stats3d = chamfer_body[plot_body_wing][2]
+        plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
+        ax[idx].get_legend().remove()
+        if idx != 0:
+            ax[idx].set(ylabel=None)
+        ax[idx].set_title(angle)
 
 
 

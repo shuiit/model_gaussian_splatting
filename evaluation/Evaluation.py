@@ -4,6 +4,7 @@ import os
 from FlyOutput import FlyOutput
 import Utils
 import numpy as np
+import math
 
 class Evaluation(FlyOutput):
     def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,**kwargs):
@@ -134,7 +135,7 @@ class Evaluation(FlyOutput):
             span = getattr(self,f'{wing_name.split("_wing")[0]}_gt_wing_span')
             chord = getattr(self,f'{wing_name.split("_wing")[0]}_gt_wing_chord')
 
-            le = reordered[0:reordered.shape[0]//2,:]
+            le = reordered[0:reordered.shape[0]//2 + 1,:]
             te = reordered[reordered.shape[0]//2:,:]
             setattr(self,f'{wing_name}',reordered)
 
@@ -166,28 +167,42 @@ class Evaluation(FlyOutput):
         point_to_origin = point - origin # a vector from the point to the lines origin
         line_sq_length = np.dot(line, line) # project the vector from the origin to the point on the line
         t = np.dot(point_to_origin, line) / line_sq_length
-        # if 0 <= t <= 1:
-        projection = origin + t * line
-        dist = np.linalg.norm(point - projection)
-        return dist
-        # else:
-        #     return float('inf')
+        if 0 <= t <= 1:
+            projection = origin + t * line
+            dist = np.linalg.norm(point - projection)
+            return dist
+        else:
+            return float('inf')
         
 
 
 # dist_closest_interest_to_gs = []
 
     def get_indices_closest_points_to_line(self, points,points_of_line):
-        return np.argmin([self.point_to_segment_projection(points, points_of_line[k], points_of_line[k+1]) for k in range(points_of_line.shape[0] - 1)])
+        # add if all inf return None/inf...
+        projection = [self.point_to_segment_projection(points, points_of_line[k], points_of_line[k+1]) for k in range(points_of_line.shape[0] - 1)]
+        all_inf = all(math.isinf(p) for p in projection)
+        if all_inf == True: 
+            return float('inf')
+        else:
+            return np.argmin(projection)
 
 
     def run_all_points_get_closest(self, points, points_of_line):
         return [self.get_indices_closest_points_to_line(points[idx], points_of_line) for idx in range(points.shape[0])]
 
 
-
     def get_projected_points_on_line(self,points_to_project_on_line,line_points,indices):
-        return np.vstack([Utils.project_point_on_line(points_to_project_on_line[idx],line_points,indices[idx]) for idx in range(len(indices))])
+        
+        dist = []
+        for idx,val in enumerate(indices):
+            if val == float('inf'):
+                closest_point = np.argmin(np.linalg.norm(points_to_project_on_line[idx] - line_points,axis = 1))
+                dist.append(line_points[closest_point])
+            else:
+                dist.append(Utils.project_point_on_line(points_to_project_on_line[idx],line_points,indices[idx]))
+        #ADD - if inf dist from vlosest point
+        return np.vstack(dist)
 
     def get_projected_and_store(self,frame, source_attr, target_attr, output_attr):
         source = getattr(frame, source_attr)
@@ -210,8 +225,8 @@ class Evaluation(FlyOutput):
     
     
     def calculate_repreojection_error(self,att_to_calc):
-        fitted = np.vstack((getattr(self,att_to_calc[0]),getattr(self, att_to_calc[1])))
-        original = np.vstack((getattr(self, att_to_calc[2]),getattr(self, att_to_calc[3])))
+        fitted = getattr(self,att_to_calc[0])
+        original = getattr(self, att_to_calc[1])
         bound_on_ew = (self.ew_to_lab.T @ fitted.T ).T
         interest_to_ew = (self.ew_to_lab.T @ original.T).T
         projected_interest = [np.fliplr(frame2d.project_with_proj_mat(interest_to_ew)[:,0:2]) for frame2d in self.frames]
@@ -219,10 +234,7 @@ class Evaluation(FlyOutput):
         return np.sqrt(np.sum((np.vstack(projected_interest) - np.vstack(projected_gs))**2, axis = 1))
     
     def calculate_3d_dist(self,att_to_calc):
-        
-        fitted = np.vstack((getattr(self,att_to_calc[0]),getattr(self, att_to_calc[1])))
-        original = np.vstack((getattr(self, att_to_calc[2]),getattr(self, att_to_calc[3])))
-        return np.sqrt(np.sum((fitted - original)**2, axis = 1))*1000
+        return np.sqrt(np.sum((getattr(self,att_to_calc[0]) - getattr(self,att_to_calc[1]))**2, axis = 1))*1000
 
     
     def get_all_interest_2d_projection(self):
@@ -242,23 +254,36 @@ class Evaluation(FlyOutput):
         self.dist_from_gaussians_point_2d = np.sqrt(np.sum((self.projected_interest_gaussians[...,::-1] - self.interest_points)**2,axis = 2))
         self.dist_from_gaussians_point = np.sqrt(np.sum((self.interest_points_closest_to_gaussian_ew - self.interest_points_3d)**2,axis = 1))
 
-    def calculate_error(self, suffix):
+    def calculate_error(self, suffix, model_name):
         
-        att_to_calc_tagged = [f"interest_on_bound_rw_{suffix}", f"interest_on_bound_lw_{suffix}", f"right_wing_tagged_{suffix}",f"left_wing_tagged_{suffix}"]
-        att_to_calc_gs = [f'bound_on_interest_rw_{suffix}', f'bound_on_interest_lw_{suffix}', f'right_wing_boundary_{suffix}',f'left_wing_boundary_{suffix}']
+
+        att_to_calc_tagged_rw = [f"interest_on_bound_rw_{suffix}",f"right_wing_tagged_{suffix}"] 
+        att_to_calc_tagged_lw = [f"interest_on_bound_lw_{suffix}",f"left_wing_tagged_{suffix}"]
+
+        att_to_calc_gs_rw = [f'bound_on_interest_rw_{suffix}',f'right_wing_boundary_{suffix}' ]
+        att_to_calc_gs_lw = [f'bound_on_interest_lw_{suffix}',f'left_wing_boundary_{suffix}']
+
+        if 'right' in model_name: 
+            calc_error_part = [att_to_calc_tagged_rw,att_to_calc_gs_rw]
+        elif 'left' in model_name:
+            calc_error_part = [att_to_calc_tagged_lw,att_to_calc_gs_lw]
+        else:
+            calc_error_part = [att_to_calc_tagged_rw,att_to_calc_tagged_lw,att_to_calc_gs_rw,att_to_calc_gs_lw]
+
+
  
-        error_3d = [self.calculate_3d_dist(tagged_gs) for tagged_gs in [att_to_calc_tagged,att_to_calc_gs]]
-        error_2d = [self.calculate_repreojection_error(tagged_gs) for tagged_gs in [att_to_calc_tagged,att_to_calc_gs]]
+        error_3d = [self.calculate_3d_dist(tagged_gs) for tagged_gs in calc_error_part]
+        error_2d = [self.calculate_repreojection_error(tagged_gs) for tagged_gs in calc_error_part]
         return error_3d,error_2d
     
-    def calculate_chamfler(self):
-        self.error_3d_le,self.error_2d_le = self.calculate_error('le')
-        self.error_3d_te,self.error_2d_te = self.calculate_error('te')
+    def calculate_chamfler(self, model_name):
+        num_wings = 1 if ('right' in model_name )| ('left' in model_name) else 2
+        self.error_3d_le,self.error_2d_le = self.calculate_error('le', model_name)
+        self.error_3d_te,self.error_2d_te = self.calculate_error('te', model_name)
 
-        self.error_3d_chamfer_wing = np.mean(np.hstack((self.error_3d_te[0],self.error_3d_le[0]))) + np.mean(np.hstack((self.error_3d_te[1],self.error_3d_le[1])))*1000
-        self.error_2d_chamfer_wing = np.mean(np.hstack((self.error_2d_te[0],self.error_2d_le[0]))) + np.mean(np.hstack((self.error_2d_te[1],self.error_2d_le[1])))
-
-
+        self.error_3d_chamfer_wing = sum([np.mean(np.hstack((self.error_3d_te[idx],self.error_3d_le[idx])))/num_wings for idx in range(len(self.error_3d_le))])*1000 # le_te right- gs to bound + le_te_left_gs_to_bound + le_te right- bound to gs + le_te_left bound to gs
+        self.error_2d_chamfer_wing = sum([np.mean(np.hstack((self.error_2d_te[idx],self.error_2d_le[idx])))/num_wings for idx in range(len(self.error_2d_le))]) # le_te right- gs to bound + le_te_left_gs_to_bound + le_te right- bound to gs + le_te_left bound to gs
+        
 
     # def calculate_chamfer_dist(self):
     #    ( np.mean(self.error2d_gt_on_boundary_to_gt) + np.mean(self.error3d_gt_on_boundary_to_gt))/2
