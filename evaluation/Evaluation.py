@@ -5,6 +5,7 @@ from FlyOutput import FlyOutput
 import Utils
 import numpy as np
 import math
+from Chamfer import Chamfer
 
 class Evaluation(FlyOutput):
     def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,**kwargs):
@@ -275,6 +276,88 @@ class Evaluation(FlyOutput):
         error_3d = [self.calculate_3d_dist(tagged_gs) for tagged_gs in calc_error_part]
         error_2d = [self.calculate_repreojection_error(tagged_gs) for tagged_gs in calc_error_part]
         return error_3d,error_2d
+    
+
+
+    def calculate_error_v2(self, suffix, model_name):
+        
+
+        att_to_calc_tagged_rw = [f"interest_on_bound_rw_{suffix}",f"right_wing_tagged_{suffix}"] 
+        att_to_calc_tagged_lw = [f"interest_on_bound_lw_{suffix}",f"left_wing_tagged_{suffix}"]
+
+        att_to_calc_gs_rw = [f'bound_on_interest_rw_{suffix}',f'right_wing_boundary_{suffix}' ]
+        att_to_calc_gs_lw = [f'bound_on_interest_lw_{suffix}',f'left_wing_boundary_{suffix}']
+
+        if 'right' in model_name: 
+            calc_error_part = [att_to_calc_tagged_rw,att_to_calc_gs_rw]
+        elif 'left' in model_name:
+            calc_error_part = [att_to_calc_tagged_lw,att_to_calc_gs_lw]
+        else:
+            calc_error_part = [att_to_calc_tagged_rw,att_to_calc_tagged_lw,att_to_calc_gs_rw,att_to_calc_gs_lw]
+
+
+ 
+        error_3d = [self.calculate_3d_dist(tagged_gs) for tagged_gs in calc_error_part]
+        error_2d = [self.calculate_repreojection_error(tagged_gs) for tagged_gs in calc_error_part]
+        return error_3d,error_2d
+    
+
+
+    def interp_bound_calc_chamfer(self,boundary_gt_rw, wing_surface,span,chord):
+
+        for k in range(2):
+            boundary_gt_rw = self.interpulate_wing(boundary_gt_rw) 
+        return Chamfer( boundary_gt_rw, wing_surface, span, chord)
+
+
+    def interpulate_wing(self,wing):
+        interp_vec = (wing[0:-1,:] + wing[1:,:])/2
+        interleaved = np.empty((wing.shape[0] + interp_vec.shape[0], wing.shape[1]))
+        interleaved[0::2] = wing
+        interleaved[1::2] = interp_vec
+        return interleaved
+
+
+
+    def calculate_frame_chamf(self,model_name):
+        if 'right' in model_name: 
+            return [self.interp_bound_calc_chamfer(self.right_wing_tagged,self.right_wing, self.right_gt_wing_span, self.right_gt_wing_chord)]
+
+        elif 'left' in model_name:
+            return [self.interp_bound_calc_chamfer(self.left_wing_tagged,self.left_wing, self.left_gt_wing_span, self.left_gt_wing_chord)]
+        else:
+            chamfer_gt_model_rw = self.interp_bound_calc_chamfer(self.right_wing_tagged,self.right_wing, self.right_gt_wing_span, self.right_gt_wing_chord)
+            chamfer_gt_model_lw = self.interp_bound_calc_chamfer(self.left_wing_tagged,self.left_wing, self.left_gt_wing_span, self.left_gt_wing_chord)
+            return [chamfer_gt_model_rw,chamfer_gt_model_lw]
+        
+        # chamfer_model_gt_lw = Chamfer( boundary_model_lw, boundary_gt_lw, span_lw, chord_lw,remove_outliers = False)
+        # if  (chamfer_gt_model_rw.calculate_chamfer() == 'Fail')  | (chamfer_gt_model_lw.calculate_chamfer() == 'Fail'):
+        #     return 9999999
+        # else:
+        #     return ( chamfer_gt_model_rw.calculate_chamfer() + chamfer_gt_model_rw.calculate_chamfer_gt_to_model())/2 + (chamfer_gt_model_lw.calculate_chamfer() + chamfer_gt_model_lw.calculate_chamfer_gt_to_model())/2
+
+
+
+    def calculate_chamfer_v2(self,model_name):
+
+
+        self.camfer_wings_list = self.calculate_frame_chamf(model_name)
+        chamf_sum = 0
+        for wing in self.camfer_wings_list:
+            if wing.calculate_chamfer() == 'Fail':
+                self.error_3d_chamfer_wing_v2  = 9999999
+                return 9999999
+            else:
+                chamf_sum += (wing.calculate_chamfer() + wing.calculate_chamfer_gt_to_model())
+        self.error_3d_chamfer_wing_v2  = chamf_sum/len(self.camfer_wings_list)
+        return chamf_sum/len(self.camfer_wings_list)
+
+
+
+        # num_wings = 1 if ('right' in model_name )| ('left' in model_name) else 2
+
+        # self.error_3d_chamfer_wing = sum([np.mean(np.hstack((self.error_3d_te[idx],self.error_3d_le[idx])))/num_wings for idx in range(len(self.error_3d_le))])*1000 # le_te right- gs to bound + le_te_left_gs_to_bound + le_te right- bound to gs + le_te_left bound to gs
+
     
     def calculate_chamfler(self, model_name):
         num_wings = 1 if ('right' in model_name )| ('left' in model_name) else 2

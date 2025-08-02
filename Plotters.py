@@ -298,15 +298,15 @@ def boxplot_v2(df_long, data_for_colors, xtick, ax, showfliers=False,cmap_name =
         showfliers=showfliers,
         ax = ax,**kwargs
     )
-    sns.stripplot(
-        data=df_long,
-        x=xtick,
-        y='chamfer_dist',
-        color='black',
-        size=4,
-        jitter=True,
-        ax = ax
-    )
+    # sns.stripplot(
+    #     data=df_long,
+    #     x=xtick,
+    #     y='chamfer_dist',
+    #     color='black',
+    #     size=4,
+    #     jitter=True,
+    #     ax = ax
+    # )
 
 
     
@@ -335,6 +335,7 @@ def plot_chamfer_frames_th(angle_name,chamfer_dist,chamfer_stats,x,colors,ax):
     ax.set_ylim(0)
     ax.set_xlim(0,x.max()*1.05)
     ax.legend(title=f'$\delta ^\circ $')
+    return chamfer_stats_th
 
 
 
@@ -361,10 +362,10 @@ def wing_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yti
         ax[idx].set_title(f"$\{angle}$")
             # Labeling the axis directly
         ax[idx].set_ylabel("CD [µm]")
-        xlabel = f"$\delta ^\circ ${angle_name}"
-        ax[idx].set_xlabel(xlabel.capitalize())
+        xlabel = f"$\delta_\{angle} ^\circ $"
+        ax[idx].set_xlabel(xlabel)
 
-def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yticks, cmap = 'turbo' ):
+def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yticks, cmap = 'turbo' ,**kwargs):
 
     angle = ['yaw','pitch','roll']
     for idx,angle in enumerate(angle):
@@ -372,23 +373,24 @@ def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yti
         with open(f'{path_output}/{body_names}/chamfer.pkl', 'rb') as f: 
             chamfer_body = pickle.load(f)
         chamfer_df = pd.DataFrame(chamfer_body[plot_body_wing][0])
-        boxplot2(delta_angles.astype(np.int16),chamfer_df.fillna(np.nan).to_numpy(),angle_name,ax[idx],showfliers = False, cmap_name=cmap)
+        boxplot2(delta_angles.astype(np.int16),chamfer_df.fillna(np.nan).to_numpy(),angle_name,ax[idx],showfliers = False, cmap_name=cmap,**kwargs)
         if idx != 0:
             ax[idx].set(ylabel=None)
         ax[idx].set_yticks(yticks)
         ax[idx].set_ylim([min(yticks),max(yticks)])
         # ax[idx].set_title(angle)
         ax[idx].set_ylabel("CD [µm]")
-        xlabel = f"$\delta ^\circ ${angle_name}"
+        xlabel = f"$\\delta_{{{angle.capitalize()}}}^\\circ$"
 
-        ax[idx].set_xlabel(xlabel.capitalize())
+
+        ax[idx].set_xlabel(xlabel)
 
 
 def wing_subplot_th(path_output,plot_body_wing,ax,colors):
 
     camfer = {}
-    angle = ['phi','theta','psi']
-    for idx,angle in enumerate(angle):
+    angle_name = ['phi','theta','psi']
+    for idx,angle in enumerate(angle_name):
         wing_side = ['right', 'left']
         for wing_side in wing_side:
             phi_names = f'fly_{angle}_{wing_side}_delta10_sweep_m40_40_try'
@@ -397,7 +399,7 @@ def wing_subplot_th(path_output,plot_body_wing,ax,colors):
         wings_phi_chamfer = np.vstack((camfer['right'][plot_body_wing][0],camfer['left'][plot_body_wing][0]))
         chamfer_df = pd.DataFrame(wings_phi_chamfer)
         stats3d = camfer[wing_side][plot_body_wing][2]
-        plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
+        chamfer_stats_th = plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
         ax[idx].set(xlabel=None)
         # 
         if idx != 0:
@@ -408,21 +410,25 @@ def wing_subplot_th(path_output,plot_body_wing,ax,colors):
                 title_fontsize='x-small',
                 )
         ax[idx].set_title(f"$\{angle}$")
+    return chamfer_stats_th
 
 
 def body_subplot_th(path_output,plot_body_wing,ax,colors):
     angle = ['yaw','pitch','roll']
+    camf_th_body = {}
     for idx,angle in enumerate(angle):
         body_names = f'fly_{angle}_delta10_sweep_m40_40_try'
         with open(f'{path_output}/{body_names}/chamfer.pkl', 'rb') as f: 
             chamfer_body = pickle.load(f)
         chamfer_df = pd.DataFrame(chamfer_body[plot_body_wing][0])
         stats3d = chamfer_body[plot_body_wing][2]
-        plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
+        chamfer_stats_th = plot_chamfer_frames_th(angle,chamfer_df.fillna(np.nan).to_numpy(),stats3d,np.arange(0.01*1000,0.3*1000,5),colors,ax[idx])
+        camf_th_body[angle] = chamfer_stats_th
         ax[idx].get_legend().remove()
         if idx != 0:
             ax[idx].set(ylabel=None)
         ax[idx].set_title(angle)
+    return camf_th_body
 
 
 

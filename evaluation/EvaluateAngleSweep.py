@@ -15,9 +15,17 @@ class EvaluateAngleSweep():
         self.delta_angles = delta_angles
         self.zbuff_hull,self.zbuff_model = {},{}
         res_dir = os.listdir(f'{input_dir}/results') 
-        self.results_dir = [mov_name for res_dir,mov_name in zip(res_dir, nominal_initial_angles) if len(os.listdir(f'{input_dir}/results/{res_dir}')) == len(self.delta_angles)]
+        # self.results_dir = [mov_name for res_dir,mov_name in zip(res_dir, nominal_initial_angles) if len(os.listdir(f'{input_dir}/results/{res_dir}')) == len(self.delta_angles)]
+
+        results_dir = [res_dir for res_dir in res_dir if (len(os.listdir(f'{input_dir}/results/{res_dir}')) == len(delta_angles))]
+
+
+
+        self.results_dir = [mov_name for mov_name in nominal_initial_angles.keys() if mov_name.split('_')[3] in results_dir]
+
 
         self.wing_hull,self.wing_model = {'right':{},'left':{}},{'right':{},'left':{}}
+        self.body_hull = {}
         self.input_dir = input_dir
         self.iterations = iterations
         dirs = os.listdir(f'{input_dir}/{list(nominal_initial_angles.keys())[0].split("_")[3]}') 
@@ -66,6 +74,14 @@ class EvaluateAngleSweep():
                     self.sweep[mov_name].append('Fail')
 
 
+
+
+    def calculate_wing_chamfer_v2(self):
+        for mov_name in tqdm(list(self.sweep.keys())):
+                [frame.calculate_chamfer_v2(self.model_name) for frame in self.sweep[mov_name] if frame != 'Fail']  
+
+
+
     def calculate_wing_chamfer(self):
         for mov_name in tqdm(list(self.sweep.keys())):
                 [frame.calculate_chamfler(self.model_name) for frame in self.sweep[mov_name] if frame != 'Fail']  
@@ -95,7 +111,7 @@ class EvaluateAngleSweep():
             self.sweep = pickle.load(input_file)
       else:
           self.load_all_sweep(letedict)
-          self.calculate_wing_chamfer()
+          self.calculate_wing_chamfer_v2()
           self.hull_calc_zbuff_hull_xbody(file_path_save_hull)     
       
 
@@ -159,11 +175,14 @@ class EvaluateAngleSweep():
         gt_wing = np.vstack((wing_gt))
         gt_body = np.vstack((self.sweep[mov_name][0].hull_ew))
 
-        wing_hull,body_hull = self.get_wing_body_from_hull(self.zbuff_hull[mov_name],gt_body,gt_wing)
-        wing_model,body_hull = self.get_wing_body_from_hull(self.zbuff_model[mov_name],gt_body,gt_wing)
+        wing_hull,body_hull_1 = self.get_wing_body_from_hull(self.zbuff_hull[mov_name],gt_body,gt_wing)
+        wing_model,body_model = self.get_wing_body_from_hull(self.zbuff_model[mov_name],gt_body,gt_wing)
+        # both_wings = np.vstack([self.sweep[mov_name][0].right_wing_tagged,self.sweep[mov_name][0].left_wing_tagged])
+        # wing_hull2,body_hull = self.get_wing_body_from_hull(self.zbuff_hull[mov_name],gt_body,both_wings)
 
         self.wing_hull[side_wing][mov_name] = wing_hull
         self.wing_model[side_wing][mov_name] = wing_model
+        # self.body_hull[mov_name] = body_hull
 
 
     def find_wings_from_hull(self,side_wing):
