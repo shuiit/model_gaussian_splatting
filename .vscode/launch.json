@@ -6,7 +6,7 @@
             "name": "Python: Train Model",
             "type": "debugpy-old",
             "request": "launch",
-            "program": "${workspaceFolder}/gaussian-splatting_model/train.py",
+            "program": "${workspaceFolder}/gaussian-splatting_model_time/train.py",
             "console": "integratedTerminal",
             "justMyCode": false,     
             // "env": {
@@ -14,7 +14,9 @@
             //   },                               
             "args": [
                 "-s",
-                "D:/Documents/data_for_gs/fly_gray"
+                "G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/mov49_cornell"
+
+                // "D:/Documents/data_for_gs/fly_gray"
             ],
             
         },        

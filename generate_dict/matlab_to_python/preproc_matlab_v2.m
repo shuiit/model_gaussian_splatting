@@ -3,15 +3,15 @@ clear
 close all
 clc
 
-exp = '2_6_light'
-easyWand_name = '29_5_25_mov3_easyWandData.mat'
+exp = 'cornell'
+easyWand_name = 'calibration_easyWandData_mov9.mat'
 path_frames_mov_eval = 'G:/My Drive/Research/gaussian_splatting/gaussian_splatting_input/evaluation/output_formatted.txt'
 
 
 %%
 
-movie = 160
-frame_vec = [200:300]
+movie = 9
+frame_vec = [1741:2147]
 mov_name = sprintf('mov%d',movie)
 % struct_file_name = sprintf('\\Shull_mov%d',movie)
 % load([path,mov_name,'\hull_op\',struct_file_name])
@@ -19,7 +19,7 @@ mov_name = sprintf('mov%d',movie)
 % hull3d_file_name = sprintf('\\hull3d_mov%d',movie)
 % load([path,mov_name,'\hull_op\',hull3d_file_name])
 path = 'G:\My Drive\Research\gaussian_splatting\gaussian_splatting_input\2024_04_10_moquito\'
-path = 'G:\My Drive\Research\calibration (1)\'
+path = 'D:\Documents\Xuehao flight data\Sparse\'
 load([path,easyWand_name])
 
 save_path = [path,mov_name,'_',exp,'\','images','\']

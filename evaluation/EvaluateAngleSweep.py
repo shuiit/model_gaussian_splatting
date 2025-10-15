@@ -46,7 +46,7 @@ class EvaluateAngleSweep():
 
 
     
-    def load_frame_all_sweep(self,idx_iter,mov_name,iteration,letedict,frames):
+    def load_frame_all_sweep(self,idx_iter,mov_name,iteration,letedict,frames,num_of_parts):
         mov = int(mov_name.split('_')[1]) 
         frame0 = int(mov_name.split('_')[3]) 
         image_path =  f'{self.input_path_for_image}/mov{mov}_2023_08_09_60ms/'
@@ -56,20 +56,20 @@ class EvaluateAngleSweep():
         with open(f'{self.input_dir}/results/{frame0}/{file_name}_results.pkl', 'rb') as handle:
             output_angles_weights = pickle.load(handle)
         
-        frame_eval = Evaluation(interest_points_path,image_path,frame0,self.input_dir,output_angles_weights,frame0,iteration,file_name,letedict = letedict,frames_dict = frames)
+        frame_eval = Evaluation(interest_points_path,image_path,frame0,self.input_dir,output_angles_weights,frame0,iteration,file_name,num_of_parts,letedict = letedict,frames_dict = frames)
         for source_attr, target_attr, output_attr in frame_eval.projection_tasks:
             frame_eval.get_projected_and_store(frame_eval, source_attr, target_attr, output_attr)
         return frame_eval
     
 
-    def load_all_sweep(self,letedict):
+    def load_all_sweep(self,letedict,num_of_parts):
         # generate frames file if it doesnt exist
         self.sweep = {}
         for mov_name in tqdm(self.results_dir):
             self.sweep[mov_name] = []
             for idx_iter in range(self.sweep_size):
                 try:
-                    self.sweep[mov_name].append(self.load_frame_all_sweep(idx_iter,mov_name,self.iterations,letedict,self.frames))
+                    self.sweep[mov_name].append(self.load_frame_all_sweep(idx_iter,mov_name,self.iterations,letedict,self.frames,num_of_parts))
                 except:
                     self.sweep[mov_name].append('Fail')
 
@@ -105,12 +105,12 @@ class EvaluateAngleSweep():
 
 
 
-    def load_sweep(self,sweep_path,file_path_save_hull,letedict = None):
+    def load_sweep(self,sweep_path,file_path_save_hull,num_of_parts,letedict = None):
       if os.path.isfile(sweep_path):
         with open(sweep_path, "rb") as input_file:
             self.sweep = pickle.load(input_file)
       else:
-          self.load_all_sweep(letedict)
+          self.load_all_sweep(letedict,num_of_parts)
           self.calculate_wing_chamfer_v2()
           self.hull_calc_zbuff_hull_xbody(file_path_save_hull)     
       
@@ -151,7 +151,9 @@ class EvaluateAngleSweep():
                 movs_list.append(mov_name)
         movs_to_compare = [mov_name for mov_name in  movs_list if (mov_name != 'mov_36_frame_223') & (mov_name != 'mov_121_frame_2939') & 
                            (mov_name != 'mov_40_frame_4690') & (mov_name != 'mov_59_frame_2027') & (mov_name in self.sweep.keys())]
-
+        movs_to_compare = [mov_name for mov_name in  movs_list if (mov_name != 'mov_36_frame_223') &  
+                           (mov_name != 'mov_40_frame_4690') & (mov_name != 'mov_59_frame_2027') & (mov_name in self.sweep.keys())]
+        
         [self.calculate_zbuffs_hull_model(mov_name,path_hull) for mov_name in tqdm(movs_to_compare)]
 
     def get_wing_body_from_hull(self,hull_points,gt_body,gt_wing):

@@ -8,13 +8,14 @@ import math
 from Chamfer import Chamfer
 
 class Evaluation(FlyOutput):
-    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,**kwargs):
+    def __init__(self,interest_points_path,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,num_of_parts,letedict = None,**kwargs):
         super().__init__(image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,deg = 0,skip_frames = 1,letedict = letedict,**kwargs)
         interest_points = self.load_parimiter(interest_points_path)
         [frame.add_interest_point(np.fliplr(np.vstack(interest_point))) for interest_point, frame in zip(interest_points.values(),self.frames)]
         self.triangulate_interest_pixels()
         self.define_wings_interest_points()
         self.letedict = letedict
+        self.num_of_parts_chamfer = num_of_parts
 
         self.projection_tasks = [
             ("right_wing_tagged_le", "right_wing_boundary_le", "interest_on_bound_rw_le"),
@@ -307,7 +308,7 @@ class Evaluation(FlyOutput):
 
         for k in range(2):
             boundary_gt_rw = self.interpulate_wing(boundary_gt_rw) 
-        return Chamfer( boundary_gt_rw, wing_surface, span, chord)
+        return Chamfer( boundary_gt_rw, wing_surface, span, chord,num_of_parts=self.num_of_parts_chamfer)
 
 
     def interpulate_wing(self,wing):

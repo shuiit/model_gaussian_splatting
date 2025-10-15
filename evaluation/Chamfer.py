@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 from shapely.geometry import Point, Polygon
 import Utils
 class Chamfer():
-    def __init__(self, boundary_gt, surface_model, span, chord,remove_outliers = True):
+    def __init__(self, boundary_gt, surface_model, span, chord,remove_outliers = True,num_of_parts = 7):
         self.boundary = boundary_gt
         self.surface = surface_model
         self.span = span
@@ -16,7 +16,7 @@ class Chamfer():
 
 
         try:
-            devided_wing = self.devide_wings_to_parts(self.surface,span,num_of_parts = 8)
+            devided_wing = self.devide_wings_to_parts(self.surface,span,num_of_parts = num_of_parts)
 
             self.surface_parts = self.get_parts_wing(self.surface,devided_wing,span)
             # self.boundary_parts = self.get_parts_wing(self.boundary,devided_wing,span)
@@ -201,9 +201,16 @@ class Chamfer():
         if  (hasattr(self,'inside_bound')) | (hasattr(self,'outside_bound')):
             
             if hasattr(self,'inside_bound'):
-                inside = np.abs(np.dot(self.inside_bound - centroid,normal))
-                self.chamfer_inside = inside*1000*1000
-                add_cham = (np.sum(inside)/inside.shape[0])*1000*1000
+                
+                centroid, _ = self.fit_plane_and_normal(self.boundary)
+                tris = self.triangle_fan_fast(self.boundary, centroid)
+                centers, normals = self.triangle_centers_and_normals(tris)
+                add_cham = self.mean_abs_plane_distance(self.inside_bound, centers, normals) * 1e6  # to microns
+
+
+                # inside = np.abs(np.dot(self.inside_bound - centroid,normal))
+                # self.chamfer_inside = inside*1000*1000
+                # add_cham = (np.sum(inside)/inside.shape[0])*1000*1000
 
             if len(self.outside_bound) > 0 :
                 if hasattr(self,'inside_bound'):
@@ -231,6 +238,55 @@ class Chamfer():
 
 
 
+    def fit_plane_and_normal(self,points: np.ndarray):
+        """Return centroid and plane normal via PCA."""
+        centroid = points.mean(axis=0)
+        U, S, Vt = np.linalg.svd(points - centroid, full_matrices=False)
+        normal = Vt[-1]  # smallest singular vector
+        # ensure unit normal
+        normal /= np.linalg.norm(normal)
+        return centroid, normal
+
+    def triangle_fan_fast(self,boundary: np.ndarray, center: np.ndarray):
+        """
+        Build a triangle fan as an array of shape (T, 3, 3),
+        where T == len(boundary).
+        """
+        p = boundary
+        q = np.roll(boundary, -1, axis=0)
+        T = len(boundary)
+        centers = np.broadcast_to(center, (T, 3))
+        tris = np.stack([centers, p, q], axis=1)  # (T, 3, 3)
+        return tris
+
+    def triangle_centers_and_normals(self,tris: np.ndarray):
+        """
+        Given triangles (T,3,3), return per-triangle centers (T,3)
+        and unit normals (T,3).
+        """
+        e1 = tris[:, 1] - tris[:, 0]         # (T,3)
+        e2 = tris[:, 2] - tris[:, 0]         # (T,3)
+        n = np.cross(e1, e2)                 # (T,3)
+        n_norm = np.linalg.norm(n, axis=1, keepdims=True) + 1e-12
+        n_unit = n / n_norm
+        centers = tris.mean(axis=1)          # (T,3)
+        return centers, n_unit
+
+    def mean_abs_plane_distance(self,points: np.ndarray, plane_points: np.ndarray, plane_normals: np.ndarray):
+        """
+        For each point, compute |(p - plane_point_j) · n_j| to every plane j,
+        take the min over j, then average over points.
+        points:        (N,3)
+        plane_points:  (T,3) one point per plane (triangle center here)
+        plane_normals: (T,3) unit normals per plane
+        Returns scalar mean distance.
+        """
+        # diff: (N,T,3)
+        diff = points[:, None, :] - plane_points[None, :, :]
+        # signed distances: (N,T)
+        d = np.abs(np.sum(diff * plane_normals[None, :, :], axis=2))
+        d_min = d.min(axis=1)  # (N,)
+        return d_min.mean()
 
 
 # # Convert mask to color (green if inside, red if outside)

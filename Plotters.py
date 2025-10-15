@@ -8,8 +8,8 @@ import matplotlib.cm
 import numpy as np
 import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
-import pandas as pd
-import seaborn as sns
+# import pandas as pd
+# import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import pickle
@@ -196,7 +196,7 @@ def boxplot2(delta_angles, chamfer_3d, angle_name,ax, showfliers=False,cmap_name
 
     # Flatten data for seaborn
     data_long = {
-        f'delta_{angle_name}': np.repeat(delta_angles, n_samples),
+        f'delta{angle_name}': np.repeat(delta_angles, n_samples),
         'chamfer_dist': chamfer_3d.T.flatten()
     }
     df_long = pd.DataFrame(data_long)
@@ -213,7 +213,7 @@ def boxplot2(delta_angles, chamfer_3d, angle_name,ax, showfliers=False,cmap_name
 
     # Plot
 
-    xdata = f'delta_{angle_name}' if xdata == False else xdata
+    xdata = f'delta{angle_name}' if xdata == False else xdata
 
     sns.boxplot(
         data=df_long,
@@ -240,7 +240,7 @@ def boxplot(delta_angles, chamfer_3d, angle_name,ax, showfliers=False,cmap_name 
 
     # Flatten data for seaborn
     data_long = {
-        f'delta_{angle_name}': np.repeat(delta_angles, n_samples),
+        f'delta{angle_name}': np.repeat(delta_angles, n_samples),
         'chamfer_dist': chamfer_3d.T.flatten()
     }
     df_long = pd.DataFrame(data_long)
@@ -334,7 +334,7 @@ def plot_chamfer_frames_th(angle_name,chamfer_dist,chamfer_stats,x,colors,ax):
     ax.set_xlabel('CD threshold [μm]')
     ax.set_ylim(0)
     ax.set_xlim(0,x.max()*1.05)
-    ax.legend(title=f'$\delta ^\circ $')
+    ax.legend(title=f'$\delta  $')
     return chamfer_stats_th
 
 
@@ -362,7 +362,7 @@ def wing_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yti
         ax[idx].set_title(f"$\{angle}$")
             # Labeling the axis directly
         ax[idx].set_ylabel("CD [µm]")
-        xlabel = f"$\delta_\{angle} ^\circ $"
+        xlabel = f"$\delta\{angle} $"
         ax[idx].set_xlabel(xlabel)
 
 def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yticks, cmap = 'turbo' ,**kwargs):
@@ -380,7 +380,7 @@ def body_subplot_box(delta_angles,path_output,plot_body_wing,angle_name, ax, yti
         ax[idx].set_ylim([min(yticks),max(yticks)])
         # ax[idx].set_title(angle)
         ax[idx].set_ylabel("CD [µm]")
-        xlabel = f"$\\delta_{{{angle.capitalize()}}}^\\circ$"
+        xlabel = f"$\\delta{{{angle.capitalize()}}}$"
 
 
         ax[idx].set_xlabel(xlabel)
@@ -406,7 +406,7 @@ def wing_subplot_th(path_output,plot_body_wing,ax,colors):
             ax[idx].get_legend().remove()
             ax[idx].set(ylabel=None)
         if idx == 0:
-            ax[idx].legend(title='$\Delta$ angle',
+            ax[idx].legend(title='$\delta$ angle',
                 title_fontsize='x-small',
                 )
         ax[idx].set_title(f"$\{angle}$")

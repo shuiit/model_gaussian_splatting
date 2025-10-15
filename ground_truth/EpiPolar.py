@@ -21,7 +21,7 @@ from matplotlib import colors as mcolors
 
 
 class EpiPolar:
-    def __init__(self,image_path,frame,frames_dict, save_file_name ):
+    def __init__(self,image_path,frame,frames_dict, save_file_name = None ):
         self.frames = [Frame(image_path,frame,cam,frames_dict = frames_dict) for cam in range(4)] 
 
 
