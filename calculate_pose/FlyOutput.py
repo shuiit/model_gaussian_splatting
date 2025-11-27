@@ -144,23 +144,47 @@ class FlyOutput:
         le_te_bins = [self.get_max_le_te(bin_indices_le,idx,le_te_projected_chord,wing[le_te]) for idx in bin_indices_le] 
         wing[f'{le_te}_bins'] = np.vstack(le_te_bins)
 
-    def approx_le(self,wing):
+    def approx_le(self,wing, perc_wing_for_le = 0.7, key = 'le_ransac'):
         le_projected_span = np.dot(wing[f'le_bins'] -  wing['mean'], wing['span'])
         tip_side = np.max(le_projected_span)
         root_side = np.min(le_projected_span)
 
-        root_le = wing['le_bins'][le_projected_span < (root_side + (tip_side - root_side)*0.7)]
+        root_le = wing['le_bins'][le_projected_span < (root_side + (tip_side - root_side)*perc_wing_for_le)]
 
 
         model_robust, inliers = ransac(root_le, LineModelND, min_samples=2, residual_threshold=10/100000, max_trials=1000)
         origin, direction = model_robust.params
-        wing['le_ransac'] = [origin,direction]
+        wing[key] = [origin,direction]
 
 
     def check_direction_span_ransac(self, wing):
         if np.dot(wing['le_ransac'][1],wing['span']) < 0:
             wing['le_ransac'][1] = -wing['le_ransac'][1]
         
+
+    def get_wing_root(self,wing,perc_wing_for_root = 0.1):
+        le_projected_span = np.dot(wing[f'le_bins'] -  wing['mean'], wing['span'])
+        tip_side = np.max(le_projected_span)
+        root_side = np.min(le_projected_span)
+        root_le = wing['le_bins'][le_projected_span < (root_side + (tip_side - root_side)*perc_wing_for_root)]
+        wing['root'] = np.mean(root_le,axis=0)
+         
+
+    def calculate_ybody(self):
+        self.get_wing_root(self.right_wing,perc_wing_for_root = 0.1)
+        self.get_wing_root(self.left_wing,perc_wing_for_root = 0.1)
+
+        ybody = self.right_wing['root'] - self.left_wing['root']
+        ybody = ybody/np.linalg.norm(ybody)
+        self.ybody = ybody
+
+
+    def calculate_zbody(self):
+        zbody = np.cross(self.xbody,self.ybody)
+        zbody = zbody/np.linalg.norm(zbody)
+        self.zbody = zbody
+        self.ybody = np.cross(self.zbody,self.xbody)
+        self.ybody = self.ybody/np.linalg.norm(self.ybody)
 
 
     
@@ -171,6 +195,7 @@ class FlyOutput:
         self.get_le_te_bins('te',wing,num_of_bins = 50)
         self.approx_le(wing)
         self.check_direction_span_ransac( wing)
+        
 
     
 
