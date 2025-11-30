@@ -12,6 +12,8 @@ from skimage.measure import LineModelND, ransac
 import render.sh_utils as sh_utils
 import pickle
 from scipy.signal import savgol_filter
+import time
+
 
 class FlyOutput:
     def __init__(self,image_path,frame,input_dir,output_angles_weights,frame0,iteration,file_name,letedict = None,deg = 0,skip_frames = 1,**kwargs, ):
@@ -81,7 +83,7 @@ class FlyOutput:
         return -axis if np.dot(direction,axis) < 0 else axis
     
     
-    def reorient_axis(self,points,direction,percent_bot = 0.05,percent_top = 0.1):
+    def reorient_axis(self,points,direction,percent_bot = 0.2,percent_top = 0.2):
         projected_on_body = np.dot(points,direction)
         min_points = min(projected_on_body)
         max_points = max(projected_on_body)
@@ -152,7 +154,7 @@ class FlyOutput:
         root_le = wing['le_bins'][le_projected_span < (root_side + (tip_side - root_side)*perc_wing_for_le)]
 
 
-        model_robust, inliers = ransac(root_le, LineModelND, min_samples=2, residual_threshold=10/100000, max_trials=1000)
+        model_robust, inliers = ransac(root_le, LineModelND, min_samples=2, residual_threshold=10/100000, max_trials=50)
         origin, direction = model_robust.params
         wing[key] = [origin,direction]
 
@@ -168,33 +170,143 @@ class FlyOutput:
         root_side = np.min(le_projected_span)
         root_le = wing['le_bins'][le_projected_span < (root_side + (tip_side - root_side)*perc_wing_for_root)]
         wing['root'] = np.mean(root_le,axis=0)
-         
+        wing['root_le'] = wing['le_ransac'][0] + wing['le_ransac'][1]*np.dot(wing['le_ransac'][1],(wing['root'] - wing['le_ransac'][0]))
 
-    def calculate_ybody(self):
-        self.get_wing_root(self.right_wing,perc_wing_for_root = 0.1)
-        self.get_wing_root(self.left_wing,perc_wing_for_root = 0.1)
 
-        ybody = self.right_wing['root'] - self.left_wing['root']
+    def calculate_chord(self,wing):
+        wing['tip_le'] =  wing['le_ransac'][0] + wing['le_ransac'][1]*np.dot(wing['le_ransac'][1],(wing['tip_mean'] - wing['le_ransac'][0]))
+
+        v1 = wing['tip_le'] - wing['tip_mean']
+        v2 = wing['root_le'] - wing['tip_mean']
+        norm_le = np.cross(v1/np.linalg.norm(v1),v2/np.linalg.norm(v2))
+        chord = np.cross(wing['le_ransac'][1],norm_le)
+        wing['chord'] = chord /  np.linalg.norm(chord)
+
+
+    def calculate_ybody(self,perc_wing_for_root = 0.1):
+        self.get_wing_root(self.right_wing,perc_wing_for_root = perc_wing_for_root)
+        self.get_wing_root(self.left_wing,perc_wing_for_root = perc_wing_for_root)
+
+        ybody = self.right_wing['root_le'] - self.left_wing['root_le']
         ybody = ybody/np.linalg.norm(ybody)
-        self.ybody = ybody
+
+        self.ybody = ybody 
+
 
 
     def calculate_zbody(self):
-        zbody = np.cross(self.xbody,self.ybody)
+        zbody = np.cross(self.ybody,self.xbody)
         zbody = zbody/np.linalg.norm(zbody)
         self.zbody = zbody
-        self.ybody = np.cross(self.zbody,self.xbody)
-        self.ybody = self.ybody/np.linalg.norm(self.ybody)
+        self.xbody = np.cross(self.zbody,self.ybody)
+        self.xbody = self.xbody/np.linalg.norm(self.xbody)
+        self.sp_normal = self.rodrigues_rotate_vector(self.zbody, self.ybody, -45*np.pi/180)
+        
+
+    def calculate_phi(self,wing, left):
+        sign_left = -1 if left== 1 else 1
+        le_on_sp = self.project_on_plane( self.sp_normal, wing['le_ransac'][1])
+        xbody_on_sp = self.project_on_plane( self.sp_normal, self.xbody)
+        ybody_on_sp = np.cross(xbody_on_sp,self.sp_normal)
+        ybody_on_sp = ybody_on_sp / np.linalg.norm(ybody_on_sp)
+        xle = np.dot(le_on_sp,xbody_on_sp)
+        yle = np.dot(le_on_sp,ybody_on_sp)
+        phi = np.arctan2(sign_left*yle,xle) % (2*np.pi)*180/np.pi
+        wing['phi'] = phi if phi < 250 else phi - 360
 
 
-    
+    def calculate_theta(self,wing):
+        wing['theta'] = 90 - np.arccos(np.dot( self.sp_normal,wing['le_ransac'][1]))*180/np.pi
+
+    def project_on_plane(self, normal, vector):
+        projected = vector - np.dot(normal,vector)*normal
+        return projected/np.linalg.norm(projected)
+
+
+
+
+    def calcultae_psi(self,wing,left ):
+        if left == 1:
+            le_sp_normal = np.cross(self.sp_normal, wing['le_ransac'][1])
+            signy = -1
+        else:
+            le_sp_normal = np.cross( wing['le_ransac'][1],self.sp_normal)
+            signy = 1
+
+        le_sp_normal = le_sp_normal / np.linalg.norm(le_sp_normal)
+        sp_chord = np.cross(wing['le_ransac'][1],le_sp_normal)
+        sp_chord = sp_chord / np.linalg.norm(sp_chord)
+
+        ypsi = signy*np.dot(wing['chord'],sp_chord)
+        xpsi = np.dot(wing['chord'],le_sp_normal)
+        psi = np.arctan2(ypsi,xpsi) 
+        psi = np.unwrap(psi)  
+        wing['psi'] = np.mod(psi, 2*np.pi) * 180/np.pi 
+
+    def rodrigues_rotate_vector(self,v, k, theta):
+        """
+        Rotates a vector v by an angle theta around a unit vector axis k.
+
+        Args:
+            v (np.array): The 3D vector to rotate.
+            k (np.array): The 3D unit vector representing the rotation axis.
+            theta (float): The rotation angle in radians.
+
+        Returns:
+            np.array: The rotated 3D vector.
+        """
+        k = k / np.linalg.norm(k)  # Ensure k is a unit vector
+        v_rotated = v * np.cos(theta) + \
+                    np.cross(k, v) * np.sin(theta) + \
+                    k * np.dot(k, v) * (1 - np.cos(theta))
+        return v_rotated
+
+
     def wings_parameters(self, wing):
+        t0 = time.time()
         self.get_span(wing)
         self.get_le_te(wing)
         self.get_le_te_bins('le',wing,num_of_bins = 50)
         self.get_le_te_bins('te',wing,num_of_bins = 50)
         self.approx_le(wing)
         self.check_direction_span_ransac( wing)
+
+        
+    # def wings_parameters(self, wing):
+    #     timings = {}
+
+    #     t0 = time.perf_counter()
+    #     self.get_span(wing)
+    #     timings['get_span'] = time.perf_counter() - t0
+
+    #     t0 = time.perf_counter()
+    #     self.get_le_te(wing)
+    #     timings['get_le_te'] = time.perf_counter() - t0
+
+    #     t0 = time.perf_counter()
+    #     self.get_le_te_bins('le', wing, num_of_bins=50)
+    #     timings['get_le_te_bins_le'] = time.perf_counter() - t0
+
+    #     t0 = time.perf_counter()
+    #     self.get_le_te_bins('te', wing, num_of_bins=50)
+    #     timings['get_le_te_bins_te'] = time.perf_counter() - t0
+
+    #     t0 = time.perf_counter()
+    #     self.approx_le(wing)
+    #     timings['approx_le'] = time.perf_counter() - t0
+
+    #     t0 = time.perf_counter()
+    #     self.check_direction_span_ransac(wing)
+    #     timings['check_direction_span_ransac'] = time.perf_counter() - t0
+
+    #     # attach timings to the wing for later inspection
+        # wing['timings'] = timings
+        
+
+    def calculate_wing_angles(self,wing, left):
+        self.calculate_phi(wing, left)
+        self.calculate_theta(wing)
+        self.calcultae_psi(wing,left )
         
 
     
